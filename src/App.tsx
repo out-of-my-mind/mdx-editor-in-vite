@@ -87,8 +87,8 @@ function App() {
       try {
         const content = editorRef.current.getMarkdown();
         console.log("保存数据:", { title: titleRef.current, content });
-
-        const response = await fetch("http://127.0.0.1:5000/notes/add", {
+        
+        const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}/notes/add`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

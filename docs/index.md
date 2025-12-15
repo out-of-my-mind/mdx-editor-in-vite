@@ -1,5 +1,5 @@
 ---
-layout: doc
+layout: home
 
 hero:
   name: "帮助文档"

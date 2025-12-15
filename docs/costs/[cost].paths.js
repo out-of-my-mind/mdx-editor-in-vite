@@ -1,7 +1,12 @@
+import ENV from '../env'
+
+const url = ENV.VITE_PRESS_ENV_API
 export default {
   async paths() {
-    const pkgs = await (await fetch('http://127.0.0.1:5000/vitepress/GetVitePressRoute')).json()
-    return JSON.parse(pkgs).map((pkg) => {
+    const pkgs = await (
+      await fetch(`http://${url}/vitepress/GetVitePressRoute`)
+    ).json()
+    return pkgs.data.map((pkg) => {
       return {
         params: {
           cost: pkg.title,
