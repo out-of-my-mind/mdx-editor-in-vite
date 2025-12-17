@@ -32,7 +32,7 @@ import {
 import { useRef, useState, useMemo, useEffect, useCallback } from "react";
 import { TextField, IconButton, CircularProgress } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
-
+import DrawerCom from "./com/drawer";
 
 // 自定义保存按钮组件
 const SaveBtn = ({onSave, isSaving}: {onSave: ()=>void, isSaving: boolean}) => (
@@ -161,27 +161,32 @@ function App() {
   }
 
   return (
-    <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-      <TextField
-        fullWidth
-        required
-        error={!title.trim()}
-        helperText={!title.trim() ? "此字段为必填项" : ""}
-        label="标题"
-        variant="outlined"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        margin="normal"
-        style={{ marginBottom: '20px' }}
-      />
-      
-      <MDXEditor
-        key="mdx-editor"
-        ref={editorRef}
-        markdown={initialMarkdown}
-        plugins={plugins}
-      />
-    </div>
+    <>
+      <DrawerCom>
+        <TextField
+          fullWidth
+          required
+          error={!title.trim()}
+          helperText={!title.trim() ? "此字段为必填项" : ""}
+          label="标题"
+          variant="outlined"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          margin="normal"
+          style={{ marginBottom: '20px' }}
+        />
+        
+        <MDXEditor
+          key="mdx-editor"
+          ref={editorRef}
+          markdown={initialMarkdown}
+          plugins={plugins}
+        />
+      </DrawerCom>
+      {/* <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
+        
+      </div> */}
+    </>
   );
 }
 

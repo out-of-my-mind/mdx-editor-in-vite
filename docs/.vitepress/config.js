@@ -7,7 +7,6 @@ export default async () => {
   const posts = await (
     await fetch(`http://${url}/vitepress/GetVitePressSidebar`)
   ).json();
-  console.log(posts.data)
   return defineConfig({
     title: "帮助文档",
     description: "查阅",
@@ -16,71 +15,71 @@ export default async () => {
     themeConfig: {
       sidebar: posts.data,
       // {
-      //   "/costs/": [
-      //       {
-      //           "text": "\u6280\u7ecf\u624b\u518c",
+      //   "/jenkins/": [
+      //     {
+      //       "text": "jenkins手册",
+      //       "items": [
+      //         {
+      //           "text": "简介",
+      //           "link": "/jenkins/简介标题"
+      //         },
+      //         {
+      //           "text": "一级二",
+      //           "link": "/jenkins/3"
+      //         },
+      //         {
+      //           "text": "一级一",
+      //           "link": "/jenkins/2"
+      //         },
+      //         {
+      //           "text": "二级准备",
+      //           "collapsed": "false",
       //           "items": [
-      //               {
-      //                   "text": "\u7b80\u4ecb",
-      //                   "link": "/costs/a"
-      //               },
-      //               {
-      //                   "text": "\u4e00\u7ea71",
-      //                   "link": "/costs/b"
-      //               },
-      //               {
-      //                   "text": "\u4e00\u7ea72",
-      //                   "link": "/costs/c"
-      //               },
-      //               {
-      //                   "text": "\u4e8c\u7ea7\u51c6\u5907",
-      //                   "collapsed": "false",
-      //                   "items": [
-      //                       {
-      //                           "text": "\u4e8c\u7ea71",
-      //                           "link": "/costs/d"
-      //                       },
-      //                       {
-      //                           "text": "\u4e8c\u7ea72",
-      //                           "link": "/costs/e"
-      //                       }
-      //                   ]
-      //               }
+      //             {
+      //               "text": "二级二",
+      //               "link": "/jenkins/5"
+      //             },
+      //             {
+      //               "text": "二级一",
+      //               "link": "/jenkins/4"
+      //             }
       //           ]
-      //       }
+      //         }
+      //       ]
+      //     }
       //   ],
-      //   "/designs/": [
-      //       {
-      //           "text": "\u8bbe\u8ba1\u624b\u518c",
+      //   "/svn/": [
+      //     {
+      //       "text": "svn手册",
+      //       "items": [
+      //         {
+      //           "text": "二级准备",
+      //           "collapsed": "false",
       //           "items": [
-      //               {
-      //                   "text": "\u7b80\u4ecb",
-      //                   "link": "/designs/a"
-      //               },
-      //               {
-      //                   "text": "\u4e00\u7ea71",
-      //                   "link": "/designs/b"
-      //               },
-      //               {
-      //                   "text": "\u4e00\u7ea72",
-      //                   "link": "/designs/c"
-      //               },
-      //               {
-      //                   "text": "\u4e8c\u7ea7\u51c6\u5907",
-      //                   "collapsed": "false",
-      //                   "items": [
-      //                       {
-      //                           "text": "\u4e8c\u7ea71",
-      //                           "link": "/designs/d"
-      //                       },
-      //                       {
-      //                           "text": "\u4e8c\u7ea72",
-      //                           "link": "/designs/e"
-      //                       }
-      //                   ]
-      //               }
+      //             {
+      //               "text": "二级一",
+      //               "link": "/svn/4"
+      //             },
+      //             {
+      //               "text": "二级二",
+      //               "link": "/svn/5"
+      //             }
       //           ]
-      //       }
+      //         },
+      //         {
+      //           "text": "简介",
+      //           "link": "/svn/1"
+      //         },
+      //         {
+      //           "text": "一级一",
+      //           "link": "/svn/2"
+      //         },
+      //         {
+      //           "text": "一级二",
+      //           "link": "/svn/3"
+      //         }
+      //       ]
+      //     }
       //   ]
       // },
       search: {

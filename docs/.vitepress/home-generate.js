@@ -22,7 +22,6 @@ async function updateHomePage() {
     if (!response.ok) {
       throw new Error(`API请求失败: ${response.status} ${response.statusText}`)
     }
-    
     const result = await response.json()
     // 2. 根据你的API实际返回结构调整
     const actions = result.data || result
@@ -44,22 +43,22 @@ async function updateHomePage() {
     }
 
     console.log(__dirname)
-    // 5. 创建文件夹以及文件
+    // 5. 创建模板文件夹以及文件
     const templateMD = path.join(__dirname, `../template/[].md`)
     const templateJS = path.join(__dirname, `../template/[].paths.js`)
-    actions.forEach(element => {
-      const folderPath = path.join(__dirname, `../${element.link}`)
+    actions.forEach(action => {
+      const folderPath = path.join(__dirname, `../${action.link}`)
       console.log('创建文件夹：', folderPath)
       try {
         fs.mkdirSync(folderPath, { recursive: true })
-        const mdFile = path.join(folderPath, `/[${element.link}].md`)
-        const jsFile = path.join(folderPath, `/[${element.link}].paths.js`)
+        const mdFile = path.join(folderPath, `/[${action.link}].md`)
+        const jsFile = path.join(folderPath, `/[${action.link}].paths.js`)
         fs.copyFileSync(templateMD, mdFile);
         fs.copyFileSync(templateJS, jsFile);
         console.log('文件已成功复制');
         // 替换模板内容
         let jsContent = fs.readFileSync(jsFile, 'utf-8')
-        jsContent = jsContent.replaceAll('\'#link_txt#\'', element.link)
+        jsContent = jsContent.replaceAll('\'#link_txt#\'', action.link)
         fs.writeFileSync(jsFile, jsContent)
       } catch (err) {
         throw new Error(err)
@@ -68,14 +67,21 @@ async function updateHomePage() {
     
     const frontmatterStr = match[1]
     const frontmatter = yaml.load(frontmatterStr)
-
     // 6. 更新actions
     frontmatter.hero = frontmatter.hero || {}
-    frontmatter.hero.actions = actions.map(action => ({
-      theme: action.theme || 'brand',
-      text: action.title,
-      link: `/${action.link}/`
-    }))
+    const heroActions = []
+    for(var i = 0; i < actions.length; i++) {
+      const action = actions[i]
+      const pkgs = await (
+        await fetch(`http://${url}/vitepress/GetVitePressRoute?type=${action.link}`)
+      ).json()
+      heroActions.push({
+        theme: action.theme || 'brand',
+        text: action.title,
+        link: `/${action.link}/${pkgs.data[0]?.noteid}` // 注意需要和模板js里设置的 字段保持一致
+      })
+    }
+    frontmatter.hero.actions = heroActions
     
     // 6. 重新构建文件内容
     const updatedFrontmatter = '---\n' + yaml.dump(frontmatter, { lineWidth: -1 }) + '---\n'

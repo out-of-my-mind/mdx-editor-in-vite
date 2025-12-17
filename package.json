@@ -9,8 +9,8 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "prebuild": "node docs/.vitepress/home-generate.js",
-    "docs:dev": "vitepress dev docs --host 0.0.0.0",
-    "docs:build": "vitepress build docs",
+    "docs:dev": "npm run prebuild && vitepress dev docs --host 0.0.0.0",
+    "docs:build": "npm run prebuild && vitepress build docs",
     "docs:preview": "vitepress preview docs"
   },
   "dependencies": {
