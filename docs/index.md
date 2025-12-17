@@ -6,11 +6,11 @@ hero:
   tagline: My great project tagline
   actions:
     - theme: brand
-      text: 测试1
-      link: /costs/a
+      text: jenkins手册
+      link: /jenkins/
     - theme: brand
-      text: 测试2
-      link: /designs/a
+      text: svn手册
+      link: /svn/
 features:
   - title: Feature A
     details: Lorem ipsum dolor sit amet, consectetur adipiscing elit

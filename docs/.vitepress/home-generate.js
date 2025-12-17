@@ -16,25 +16,21 @@ console.log('---------', env.VITE_PRESS_ENV_API)
 
 async function updateHomePage() {
   try {
+    //#region 从接口获得 home页 菜单数据
     // 1. 调用API获取actions数据
     const response = await fetch(`http://${url}/vitepress/GetHomeActions`)
-    
     if (!response.ok) {
       throw new Error(`API请求失败: ${response.status} ${response.statusText}`)
     }
     
     const result = await response.json()
-    
     // 2. 根据你的API实际返回结构调整
-    // 假设返回格式: { code: 0, data: [{ text: '按钮1', link: '/link1', theme: 'brand' }, ...] }
     const actions = result.data || result
-    
     console.log('获取到的actions数据:', actions)
-    
+
     // 3. 读取原始的index.md文件
     const homePagePath = path.join(__dirname, '../index.md')
     console.log('读取文件:', homePagePath)
-    
     if (!fs.existsSync(homePagePath)) {
       throw new Error(`文件不存在: ${homePagePath}`)
     }
@@ -46,16 +42,39 @@ async function updateHomePage() {
     if (!match) {
       throw new Error('未找到有效的frontmatter')
     }
+
+    console.log(__dirname)
+    // 5. 创建文件夹以及文件
+    const templateMD = path.join(__dirname, `../template/[].md`)
+    const templateJS = path.join(__dirname, `../template/[].paths.js`)
+    actions.forEach(element => {
+      const folderPath = path.join(__dirname, `../${element.link}`)
+      console.log('创建文件夹：', folderPath)
+      try {
+        fs.mkdirSync(folderPath, { recursive: true })
+        const mdFile = path.join(folderPath, `/[${element.link}].md`)
+        const jsFile = path.join(folderPath, `/[${element.link}].paths.js`)
+        fs.copyFileSync(templateMD, mdFile);
+        fs.copyFileSync(templateJS, jsFile);
+        console.log('文件已成功复制');
+        // 替换模板内容
+        let jsContent = fs.readFileSync(jsFile, 'utf-8')
+        jsContent = jsContent.replaceAll('\'#link_txt#\'', element.link)
+        fs.writeFileSync(jsFile, jsContent)
+      } catch (err) {
+        throw new Error(err)
+      }
+    });
     
     const frontmatterStr = match[1]
     const frontmatter = yaml.load(frontmatterStr)
-    
-    // 5. 更新actions
+
+    // 6. 更新actions
     frontmatter.hero = frontmatter.hero || {}
     frontmatter.hero.actions = actions.map(action => ({
       theme: action.theme || 'brand',
-      text: action.text,
-      link: action.link
+      text: action.title,
+      link: `/${action.link}/`
     }))
     
     // 6. 重新构建文件内容
@@ -66,7 +85,7 @@ async function updateHomePage() {
     // 7. 写回文件
     fs.writeFileSync(homePagePath, newContent)
     console.log('✅ 首页actions已成功更新')
-    
+    //#endregion
   } catch (error) {
     console.error('❌ 更新首页失败:', error.message)
     process.exit(1)

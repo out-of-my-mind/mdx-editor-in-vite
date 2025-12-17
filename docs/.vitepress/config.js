@@ -7,14 +7,14 @@ export default async () => {
   const posts = await (
     await fetch(`http://${url}/vitepress/GetVitePressSidebar`)
   ).json();
-  console.log(JSON.parse(posts))
+  console.log(posts.data)
   return defineConfig({
     title: "帮助文档",
     description: "查阅",
     appearance: true,
     navbar: true,
     themeConfig: {
-      sidebar: JSON.parse(posts),
+      sidebar: posts.data,
       // {
       //   "/costs/": [
       //       {

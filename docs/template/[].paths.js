@@ -4,12 +4,12 @@ const url = ENV.VITE_PRESS_ENV_API
 export default {
   async paths() {
     const pkgs = await (
-      await fetch(`http://${url}/vitepress/GetVitePressRoute`)
+      await fetch(`http://${url}/vitepress/GetVitePressRoute?type='#link_txt#'`)
     ).json()
     return pkgs.data.map((pkg) => {
       return {
         params: {
-          design: pkg.title,
+          '#link_txt#': pkg.title,
         },
         content: pkg.content
       }
