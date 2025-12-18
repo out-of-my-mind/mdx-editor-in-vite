@@ -11,8 +11,9 @@ const __dirname = path.dirname(__filename)
 // 方法1：使用环境变量（推荐）
 const url = env.VITE_PRESS_ENV_API || '127.0.0.1:5000'
 console.log('---------', env.VITE_PRESS_ENV_API)
-// 方法2：直接硬编码（快速测试用）
-// const url = '127.0.0.1:5000'
+// 生成模板文件前，先删除之前生成的文件
+const ignoreFolders = ['.vitepress', 'template','theme', 'todo']
+const basePath = path.join(__dirname, '../')
 
 async function updateHomePage() {
   try {
@@ -28,7 +29,7 @@ async function updateHomePage() {
     console.log('获取到的actions数据:', actions)
 
     // 3. 读取原始的index.md文件
-    const homePagePath = path.join(__dirname, '../index.md')
+    const homePagePath = path.join(basePath, '/index.md')
     console.log('读取文件:', homePagePath)
     if (!fs.existsSync(homePagePath)) {
       throw new Error(`文件不存在: ${homePagePath}`)
@@ -41,13 +42,19 @@ async function updateHomePage() {
     if (!match) {
       throw new Error('未找到有效的frontmatter')
     }
-
-    console.log(__dirname)
+    
     // 5. 创建模板文件夹以及文件
-    const templateMD = path.join(__dirname, `../template/[].md`)
-    const templateJS = path.join(__dirname, `../template/[].paths.js`)
+    const fileAll = fs.readdirSync(basePath)
+    fileAll.forEach((item) =>{
+      const filePath = path.join(basePath, `/${item}`)
+      if(fs.statSync(filePath).isDirectory() && !ignoreFolders.includes(item)) {
+        fs.rmSync(filePath, { recursive: true })
+      }
+    })
+    const templateMD = path.join(basePath, `/template/[].md`)
+    const templateJS = path.join(basePath, `/template/[].paths.js`)
     actions.forEach(action => {
-      const folderPath = path.join(__dirname, `../${action.link}`)
+      const folderPath = path.join(basePath, `/${action.link}`)
       console.log('创建文件夹：', folderPath)
       try {
         fs.mkdirSync(folderPath, { recursive: true })
