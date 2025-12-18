@@ -29,10 +29,10 @@ import {
   InsertThematicBreak,
   MDXEditorMethods
 } from "@mdxeditor/editor";
-import { useRef, useState, useMemo, useEffect, useCallback } from "react";
-import { TextField, IconButton, CircularProgress } from '@mui/material';
+import { useRef, useState, useMemo, useCallback } from "react";
+import { TextField, IconButton, CircularProgress, ThemeProvider, createTheme, Snackbar, Alert } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
-import DrawerCom from "./com/drawer";
+import DrawerCom from "./com/Drawer";
 
 // 自定义保存按钮组件
 const SaveBtn = ({onSave, isSaving}: {onSave: ()=>void, isSaving: boolean}) => (
@@ -48,6 +48,18 @@ const SaveBtn = ({onSave, isSaving}: {onSave: ()=>void, isSaving: boolean}) => (
   </IconButton>
 );
 
+// 创建主题配置
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#1976d2',
+    },
+    secondary: {
+      main: '#dc004e',
+    },
+  },
+});
+
 function App() {
   const initialMarkdown = useMemo(() => `
     * Item 1
@@ -61,24 +73,20 @@ function App() {
 
   const editorRef = useRef<MDXEditorMethods>(null);
   const [title, setTitle] = useState('');
-  const [isEditorMounted, setIsEditorMounted] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  
-  // 使用 useRef 来获取最新的 title 值
-  const titleRef = useRef(title);
-  useEffect(() => {
-    titleRef.current = title;
-  }, [title]);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success' as const
+  });
 
-  useEffect(() => {
-    // 确保编辑器在组件挂载后才初始化
-    setIsEditorMounted(true);
-  }, []);
-
-  // 使用 useRef 方案，避免 title 变化时重新创建函数
   const saveMarkDown = useCallback(async () => {
-    if (!titleRef.current.trim()) {
-      alert("请填写标题");
+    if (!title.trim()) {
+      setSnackbar({
+        open: true,
+        message: '请填写标题',
+        severity: 'error'
+      });
       return;
     }
     
@@ -86,14 +94,14 @@ function App() {
       setIsSaving(true);
       try {
         const content = editorRef.current.getMarkdown();
-        console.log("保存数据:", { title: titleRef.current, content });
+        console.log("保存数据:", { title, content });
         
         const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}/notes/add`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ title: titleRef.current, content })
+          body: JSON.stringify({ title, content })
         });
 
         if (!response.ok) {
@@ -102,15 +110,23 @@ function App() {
 
         const result = await response.json();
         console.log("保存成功:", result);
-        alert("保存成功!");
+        setSnackbar({
+          open: true,
+          message: '保存成功!',
+          severity: 'success'
+        });
       } catch (error) {
         console.error("保存失败:", error);
-        alert("保存失败");
+        setSnackbar({
+          open: true,
+          message: '保存失败',
+          severity: 'error'
+        });
       } finally {
         setIsSaving(false);
       }
     }
-  }, []); // 空依赖数组，函数只创建一次
+  }, [title]);
 
   const plugins = useMemo(() => [
     headingsPlugin(),
@@ -141,9 +157,9 @@ function App() {
           <InsertThematicBreak />
           <ConditionalContents
             options={[
-              { 
-                when: (editor) => editor?.editorType === 'codeblock', 
-                contents: () => <ChangeCodeMirrorLanguage /> 
+              {
+                when: (editor) => editor?.editorType === 'codeblock',
+                contents: () => <ChangeCodeMirrorLanguage />
               },
               {
                 fallback: () => <InsertCodeBlock />
@@ -154,14 +170,10 @@ function App() {
         </DiffSourceToggleWrapper>
       ),
     }),
-  ], []);
-
-  if (!isEditorMounted) {
-    return <div>加载编辑器...</div>;
-  }
+  ], [saveMarkDown, isSaving]);
 
   return (
-    <>
+    <ThemeProvider theme={theme}>
       <DrawerCom>
         <TextField
           fullWidth
@@ -177,16 +189,28 @@ function App() {
         />
         
         <MDXEditor
-          key="mdx-editor"
           ref={editorRef}
           markdown={initialMarkdown}
           plugins={plugins}
         />
       </DrawerCom>
-      {/* <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
-        
-      </div> */}
-    </>
+      
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </ThemeProvider>
   );
 }
 
