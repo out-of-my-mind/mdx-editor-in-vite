@@ -22,7 +22,19 @@ import MailIcon from '@mui/icons-material/Mail';
 interface DrawerProps {
   children: React.ReactNode;
 }
-
+const leftMenu = [{
+  title: '记录',
+  icon: <InboxIcon />
+},{
+  title: '梳理',
+  icon: <InboxIcon />
+},{
+  title: '查看',
+  icon: <MailIcon />
+},{
+  title: '总览',
+  icon: <MailIcon />
+}]
 const drawerWidth = 240;
 
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
@@ -87,7 +99,7 @@ const DrawerHeader = styled('div')(({ theme }) => ({
 export default function DrawerCom({ children }: DrawerProps) {
   const theme = useTheme();
   const [open, setOpen] = React.useState(false);
-
+  const [menuSelect, setMenuSelect ] = React.useState('记录')
   const handleDrawerOpen = () => {
     setOpen(true);
   };
@@ -140,13 +152,13 @@ export default function DrawerCom({ children }: DrawerProps) {
         </DrawerHeader>
         <Divider />
         <List>
-          {['记录', '梳理', '查看', '总览'].map((text, index) => (
-            <ListItem key={text} disablePadding>
-              <ListItemButton>
+          {leftMenu.map((item, index) => (
+            <ListItem key={item.title} disablePadding>
+              <ListItemButton onClick={()=> setMenuSelect(item.title)} selected={menuSelect === item.title}>
                 <ListItemIcon>
-                  {index % 2 === 0 ? <InboxIcon /> : <MailIcon />}
+                  {item.icon}
                 </ListItemIcon>
-                <ListItemText primary={text} />
+                <ListItemText primary={item.title} />
               </ListItemButton>
             </ListItem>
           ))}

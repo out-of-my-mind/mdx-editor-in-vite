@@ -77,10 +77,11 @@ function App() {
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
-    severity: 'success' as const
+    severity: 'success'
   });
 
   const saveMarkDown = useCallback(async () => {
+    console.log('标题', title)
     if (!title.trim()) {
       setSnackbar({
         open: true,
@@ -170,7 +171,7 @@ function App() {
         </DiffSourceToggleWrapper>
       ),
     }),
-  ], [saveMarkDown, isSaving]);
+  ]);
 
   return (
     <ThemeProvider theme={theme}>
@@ -179,15 +180,14 @@ function App() {
           fullWidth
           required
           error={!title.trim()}
-          helperText={!title.trim() ? "此字段为必填项" : ""}
+          // helperText={!title.trim() ? "此字段为必填项" : ""}
           label="标题"
           variant="outlined"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          // value={title}
+          onBlur={(e) => {setTitle(e.target.value)}}
           margin="normal"
           style={{ marginBottom: '20px' }}
         />
-        
         <MDXEditor
           ref={editorRef}
           markdown={initialMarkdown}
