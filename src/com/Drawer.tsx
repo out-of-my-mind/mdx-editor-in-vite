@@ -21,6 +21,7 @@ import MailIcon from '@mui/icons-material/Mail';
 
 interface DrawerProps {
   children: React.ReactNode;
+  onMenuSelect?: (menu: string) => void;
 }
 const leftMenu = [{
   title: '记录',
@@ -33,6 +34,12 @@ const leftMenu = [{
   icon: <MailIcon />
 },{
   title: '总览',
+  icon: <MailIcon />
+},{
+  title: '-',
+  icon: null,
+},{
+  title: '模板',
   icon: <MailIcon />
 }]
 const drawerWidth = 240;
@@ -96,7 +103,7 @@ const DrawerHeader = styled('div')(({ theme }) => ({
   justifyContent: 'flex-end',
 }));
 
-export default function DrawerCom({ children }: DrawerProps) {
+export default function DrawerCom({ children, onMenuSelect }: DrawerProps) {
   const theme = useTheme();
   const [open, setOpen] = React.useState(false);
   const [menuSelect, setMenuSelect ] = React.useState('记录')
@@ -106,6 +113,13 @@ export default function DrawerCom({ children }: DrawerProps) {
 
   const handleDrawerClose = () => {
     setOpen(false);
+  };
+
+  const handleMenuSelect = (title: string) => {
+    setMenuSelect(title);
+    if (onMenuSelect) {
+      onMenuSelect(title);
+    }
   };
 
   return (
@@ -128,7 +142,7 @@ export default function DrawerCom({ children }: DrawerProps) {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div">
-            笔记
+            {menuSelect}
           </Typography>
         </Toolbar>
       </AppBar>
@@ -152,29 +166,22 @@ export default function DrawerCom({ children }: DrawerProps) {
         </DrawerHeader>
         <Divider />
         <List>
-          {leftMenu.map((item, index) => (
-            <ListItem key={item.title} disablePadding>
-              <ListItemButton onClick={()=> setMenuSelect(item.title)} selected={menuSelect === item.title}>
-                <ListItemIcon>
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText primary={item.title} />
-              </ListItemButton>
-            </ListItem>
-          ))}
-        </List>
-        <Divider />
-        <List>
-          {['模板'].map((text) => (
-            <ListItem key={text} disablePadding>
-              <ListItemButton>
-                <ListItemIcon>
-                  <InboxIcon />
-                </ListItemIcon>
-                <ListItemText primary={text} />
-              </ListItemButton>
-            </ListItem>
-          ))}
+          {leftMenu.map((item, index) => {
+            if (item.title === '-') {
+              return <Divider key={index} />
+            } else {
+              return (
+                <ListItem key={item.title} disablePadding>
+                  <ListItemButton onClick={() => handleMenuSelect(item.title)} selected={menuSelect === item.title}>
+                    <ListItemIcon>
+                      {item.icon}
+                    </ListItemIcon>
+                    <ListItemText primary={item.title} />
+                  </ListItemButton>
+                </ListItem>
+              )
+            }
+          })}
         </List>
       </MuiDrawer>
       <Main open={open}>
