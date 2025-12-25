@@ -2,7 +2,8 @@ import "@mdxeditor/editor/style.css";
 import { useState, useCallback } from "react";
 import { ThemeProvider, createTheme } from '@mui/material';
 import DrawerCom from "./com/Drawer";
-import Note from "./com/Note";
+import Note from "./page/Note";
+import TreeViewComponent from "./com/TreeViewComponent";
 
 // 创建主题配置
 const theme = createTheme({
@@ -14,6 +15,7 @@ const theme = createTheme({
       main: '#dc004e',
     },
   },
+  spacing: 4
 });
 
 function App() {
@@ -32,10 +34,7 @@ function App() {
           </>
         )}
         {menuSelect === '梳理' && (
-          <div style={{ padding: '20px' }}>
-            <h2>梳理页面</h2>
-            <p>这里是梳理功能的内容区域。</p>
-          </div>
+          <TreeViewComponent />
         )}
         {menuSelect === '查看' && (
           <div style={{ padding: '20px' }}>

@@ -31,7 +31,7 @@ import {
 } from "@mdxeditor/editor";
 import { useRef, useState, useMemo, useCallback } from "react";
 import { TextField, IconButton, CircularProgress, AlertProps } from '@mui/material';
-import AlertMessage from './AlertMessage';
+import AlertMessage from '../com/AlertMessage';
 import SaveIcon from '@mui/icons-material/Save';
 
 export default function Note() {

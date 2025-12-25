@@ -19,6 +19,7 @@
     "@mdxeditor/editor": "^3.52.2",
     "@mui/icons-material": "^7.3.6",
     "@mui/material": "^7.3.6",
+    "@mui/x-tree-view": "^8.23.0",
     "js-yaml": "^4.1.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
