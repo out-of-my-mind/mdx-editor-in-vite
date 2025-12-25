@@ -3,7 +3,7 @@ import { useState, useCallback } from "react";
 import { ThemeProvider, createTheme } from '@mui/material';
 import DrawerCom from "./com/Drawer";
 import Note from "./page/Note";
-import TreeViewComponent from "./com/TreeViewComponent";
+import Sorting from "./page/Sorting";
 
 // 创建主题配置
 const theme = createTheme({
@@ -34,7 +34,7 @@ function App() {
           </>
         )}
         {menuSelect === '梳理' && (
-          <TreeViewComponent />
+          <Sorting />
         )}
         {menuSelect === '查看' && (
           <div style={{ padding: '20px' }}>
