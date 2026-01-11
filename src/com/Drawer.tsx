@@ -18,30 +18,23 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import InboxIcon from '@mui/icons-material/MoveToInbox';
 import MailIcon from '@mui/icons-material/Mail';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 interface DrawerProps {
   children: React.ReactNode;
   onMenuSelect?: (menu: string) => void;
 }
-const leftMenu = [{
-  title: '记录',
-  icon: <InboxIcon />
-},{
-  title: '梳理',
-  icon: <InboxIcon />
-},{
-  title: '查看',
-  icon: <MailIcon />
-},{
-  title: '总览',
-  icon: <MailIcon />
-},{
-  title: '-',
-  icon: null,
-},{
-  title: '模板',
-  icon: <MailIcon />
-}]
+
+// 菜单配置
+const menuItems = [
+  { title: '记录', icon: <InboxIcon />, path: '/note' },
+  { title: '梳理', icon: <InboxIcon />, path: '/sorting' },
+  { title: '查看', icon: <MailIcon />, path: '/view' },
+  { title: '总览', icon: <MailIcon />, path: '/overview' },
+  { title: '-', icon: null, path: null },
+  { title: '模板', icon: <MailIcon />, path: '/template' }
+];
+
 const drawerWidth = 240;
 
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
@@ -106,8 +99,18 @@ const DrawerHeader = styled('div')(({ theme }) => ({
 
 export default function DrawerCom({ children, onMenuSelect }: DrawerProps) {
   const theme = useTheme();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [open, setOpen] = React.useState(false);
-  const [menuSelect, setMenuSelect ] = React.useState('记录')
+  
+  // 根据当前路径获取当前选中的菜单项标题
+  const getCurrentMenuTitle = () => {
+    const currentItem = menuItems.find(item => item.path === location.pathname);
+    return currentItem ? currentItem.title : '记录';
+  };
+  
+  const [menuSelect, setMenuSelect] = React.useState(getCurrentMenuTitle());
+
   const handleDrawerOpen = () => {
     setOpen(true);
   };
@@ -116,12 +119,20 @@ export default function DrawerCom({ children, onMenuSelect }: DrawerProps) {
     setOpen(false);
   };
 
-  const handleMenuSelect = (title: string) => {
+  const handleMenuSelect = (title: string, path: string) => {
     setMenuSelect(title);
+    if (path) {
+      navigate(path);
+    }
     if (onMenuSelect) {
       onMenuSelect(title);
     }
   };
+
+  // 监听路径变化，更新选中的菜单项
+  React.useEffect(() => {
+    setMenuSelect(getCurrentMenuTitle());
+  }, [location.pathname]);
 
   return (
     <Box sx={{ display: 'flex' }}>
@@ -167,13 +178,16 @@ export default function DrawerCom({ children, onMenuSelect }: DrawerProps) {
         </DrawerHeader>
         <Divider />
         <List>
-          {leftMenu.map((item, index) => {
+          {menuItems.map((item, index) => {
             if (item.title === '-') {
               return <Divider key={index} />
             } else {
               return (
                 <ListItem key={item.title} disablePadding>
-                  <ListItemButton onClick={() => handleMenuSelect(item.title)} selected={menuSelect === item.title}>
+                  <ListItemButton 
+                    onClick={() => handleMenuSelect(item.title, item.path || '')}
+                    selected={menuSelect === item.title}
+                  >
                     <ListItemIcon>
                       {item.icon}
                     </ListItemIcon>

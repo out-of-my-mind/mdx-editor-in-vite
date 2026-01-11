@@ -1,5 +1,5 @@
 .tree-view-box{
   width: 230px;
-  height: calc(100vh - 90px);
+  height: 100%; /* calc(100vh - 90px); */
   overflow-y: auto;
 }
