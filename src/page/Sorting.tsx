@@ -10,17 +10,7 @@ const ItemTypes = {
   TREE_NODE: 'tree_node',
   DATA_SOURCE_ITEM: 'data_source_item'
 };
-// 定义右侧的数据结构
-interface SourceItem {
-  id: string;
-  text: string;
-  tags: string[];
-}
-interface ApiResponse {
-  code: number;
-  data: SourceItem[];
-  message: string;
-}
+
 // 树根放置区域（用于从数据源拖拽到树根空白区域）
 const TreeRootDropZone: React.FC<{ 
   onDrop: (item: any) => void;
@@ -100,43 +90,11 @@ const TreeRootDropZone: React.FC<{
 
 // 主组件
 const SortingReactDnd: React.FC = () => {
-  const [dataSource, setDataSource] = useState<any[]>([]);
   const treeViewRef = useRef<any>(null);
-
-  // 从接口获取树数据的函数
-  const fetchDataSource = async () => {
-    // setLoading(true);
-    // setError(null);
-    try {
-      const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}/notes/getRightDataSource`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const result: ApiResponse = await response.json();
-      const rightSource: SourceItem[] = [];
-      // 检查接口返回是否成功
-      if (result.code === 200) {
-        Object.values(result.data).forEach(nodeArray => {
-          rightSource.push({...nodeArray});
-        });
-        setDataSource(rightSource);
-      } else {
-        throw new Error(result.message || '接口返回失败');
-      }
-    } catch (err) {
-      // setError(err instanceof Error ? err.message : '获取数据失败');
-    } finally {
-      // setLoading(false);
-    }
-  };
-  // 使用useEffect钩子在组件挂载时调用接口
-  useEffect(() => {
-    fetchDataSource();
-  }, []);
-
+  const dataSourceRef = useRef<any>(null);
   // 处理从树拖拽到数据源
   const handleDropToDataSource = (node: any) => {
-    setDataSource(prev => [...prev, node]);
+    dataSourceRef.current.setDataSource(prev => [...prev, node]);
     // 可选：从树中移除节点
     if (treeViewRef.current && node.id) {
       treeViewRef.current.handleRemoveNode(node.id);
@@ -147,7 +105,7 @@ const SortingReactDnd: React.FC = () => {
   const handleDropToTreeRoot = (item: any) => {
     console.log('树根', item);
     // 从数据源移除项目
-    setDataSource(prev => prev.filter((_, i) => i !== item.index));
+    dataSourceRef.current.setDataSource(prev => prev.filter((_, i) => i !== item.index));
     // 将项目添加到树根
     if (treeViewRef.current) {
       treeViewRef.current.handleAddNode(item.item);
@@ -157,12 +115,7 @@ const SortingReactDnd: React.FC = () => {
   // 处理从数据源拖拽到具体树节点
   const handleDropToTreeNode = (item: any) => {
     // 根据项目内容从数据源中移除对应的项目
-    setDataSource(prev => prev.filter(dataItem => dataItem !== item));
-  };
-
-  // 处理从数据源移除项目
-  const handleRemoveFromDataSource = (index: number) => {
-    setDataSource(prev => prev.filter((_, i) => i !== index));
+    dataSourceRef.current.setDataSource(prev => prev.filter(dataItem => dataItem !== item));
   };
 
   return (
@@ -184,9 +137,8 @@ const SortingReactDnd: React.FC = () => {
         {/* 右侧数据源区域 */}
         <Paper elevation={2} sx={{ flex: 1, padding: '16px', overflow: 'auto' }}>
           <DataSourceDropZone 
-            dataSource={dataSource}
+            ref={dataSourceRef} 
             onDrop={handleDropToDataSource}
-            onRemove={handleRemoveFromDataSource}
           />
         </Paper>
       </Box>

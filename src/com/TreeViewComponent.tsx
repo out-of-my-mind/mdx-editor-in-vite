@@ -332,7 +332,7 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
               variant="outlined"
               value={nodeName}
               onChange={(e) => setNodeName(e.target.value)}
-              onKeyPress={(e) => {
+              onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   handleConfirmAddNode();
                 }

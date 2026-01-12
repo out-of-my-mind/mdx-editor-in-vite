@@ -1,8 +1,22 @@
-import React from 'react';
+import React, { useEffect, useImperativeHandle, useState, forwardRef } from 'react';
 import { Box, Typography } from '@mui/material';
 import { useDrag, useDrop } from 'react-dnd';
 import '../styles/TreeView.css';
 
+// 定义右侧的数据结构
+interface SourceItem {
+  id: string;
+  text: string;
+  tags: string[];
+}
+interface ApiResponse {
+  code: number;
+  data: SourceItem[];
+  message: string;
+}
+interface DataSourceComponentProps {
+  onDrop?: (node: any) => void;
+}
 // 数据源项组件
 const DataSourceItem: React.FC<{ item: any; index: number; onRemove: (index: number) => void }> = ({ 
   item, 
@@ -47,15 +61,11 @@ const DataSourceItem: React.FC<{ item: any; index: number; onRemove: (index: num
 };
 
 // 数据源放置区域
-const DataSourceDropZone: React.FC<{ 
-  dataSource: any[]; 
-  onDrop: (item: any) => void;
-  onRemove: (index: number) => void;
-}> = ({ dataSource, onDrop, onRemove }) => {
+const DataSourceDropZone = forwardRef<any, DataSourceComponentProps>(({ onDrop }, ref) => {
   const [{ isOver, canDrop }, drop] = useDrop(() => ({
     accept: ['tree_node'],
     drop: (item: any) => {
-      if (item.source === 'tree') {
+      if (item.source === 'tree' && onDrop) {
         onDrop(item.node);
       }
     },
@@ -64,6 +74,46 @@ const DataSourceDropZone: React.FC<{
       canDrop: monitor.canDrop(),
     }),
   }), [onDrop]);
+
+  const [dataSource, setDataSource] = useState<any[]>([]);
+
+  // 从接口获取树数据的函数
+  const fetchDataSource = async () => {
+    // setLoading(true);
+    // setError(null);
+    try {
+      const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}/notes/getRightDataSource`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const result: ApiResponse = await response.json();
+      const rightSource: SourceItem[] = [];
+      // 检查接口返回是否成功
+      if (result.code === 200) {
+        Object.values(result.data).forEach(nodeArray => {
+          rightSource.push({...nodeArray});
+        });
+        setDataSource(rightSource);
+      } else {
+        throw new Error(result.message || '接口返回失败');
+      }
+    } catch (err) {
+      // setError(err instanceof Error ? err.message : '获取数据失败');
+    } finally {
+      // setLoading(false);
+    }
+  };
+  // 使用useEffect钩子在组件挂载时调用接口
+  useEffect(() => {
+    fetchDataSource();
+  }, []);
+  useImperativeHandle(ref, () => ({
+    setDataSource
+  }));
+  // 处理从数据源移除项目
+  const handleRemoveFromDataSource = (index: number) => {
+    setDataSource(prev => prev.filter((_, i) => i !== index));
+  };
 
   return (
     <Box
@@ -93,7 +143,7 @@ const DataSourceDropZone: React.FC<{
               key={index} 
               item={item} 
               index={index} 
-              onRemove={onRemove}
+              onRemove={handleRemoveFromDataSource}
             />
           ))}
         </Box>
@@ -122,6 +172,6 @@ const DataSourceDropZone: React.FC<{
       )}
     </Box>
   );
-};
+});
 
 export default DataSourceDropZone;
