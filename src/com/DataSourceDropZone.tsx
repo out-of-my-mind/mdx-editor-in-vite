@@ -108,11 +108,21 @@ const DataSourceDropZone = forwardRef<any, DataSourceComponentProps>(({ onDrop }
     fetchDataSource();
   }, []);
   useImperativeHandle(ref, () => ({
-    setDataSource
+    setDataSource: (newDataSource: any[] | ((prev: any[]) => any[])) => {
+      setDataSource(prev => {
+        const updatedDataSource = typeof newDataSource === 'function' ? newDataSource(prev) : newDataSource;
+        console.log('📦 数据源改变 - 更新数据源:', '当前数据源:', updatedDataSource);
+        return updatedDataSource;
+      });
+    }
   }));
   // 处理从数据源移除项目
   const handleRemoveFromDataSource = (index: number) => {
-    setDataSource(prev => prev.filter((_, i) => i !== index));
+    setDataSource(prev => {
+      const newDataSource = prev.filter((_, i) => i !== index);
+      console.log('📦 数据源改变 - 移除项目:', prev[index], '索引:', index, '当前数据源:', newDataSource);
+      return newDataSource;
+    });
   };
 
   return (

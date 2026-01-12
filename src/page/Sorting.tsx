@@ -94,7 +94,12 @@ const SortingReactDnd: React.FC = () => {
   const dataSourceRef = useRef<any>(null);
   // 处理从树拖拽到数据源
   const handleDropToDataSource = (node: any) => {
-    dataSourceRef.current.setDataSource(prev => [...prev, node]);
+    console.log('📦 数据源改变 - 从树拖拽添加项目:', node);
+    dataSourceRef.current.setDataSource(prev => {
+      const newDataSource = [...prev, node];
+      console.log('📦 数据源改变 - 添加项目后当前数据源:', newDataSource);
+      return newDataSource;
+    });
     // 可选：从树中移除节点
     if (treeViewRef.current && node.id) {
       treeViewRef.current.handleRemoveNode(node.id);
@@ -103,9 +108,13 @@ const SortingReactDnd: React.FC = () => {
 
   // 处理从数据源拖拽到树根
   const handleDropToTreeRoot = (item: any) => {
-    console.log('树根', item);
+    console.log('📦 数据源改变 - 从数据源拖拽到树根:', item);
     // 从数据源移除项目
-    dataSourceRef.current.setDataSource(prev => prev.filter((_, i) => i !== item.index));
+    dataSourceRef.current.setDataSource(prev => {
+      const newDataSource = prev.filter((_, i) => i !== item.index);
+      console.log('📦 数据源改变 - 移除项目后当前数据源:', newDataSource);
+      return newDataSource;
+    });
     // 将项目添加到树根
     if (treeViewRef.current) {
       treeViewRef.current.handleAddNode(item.item);
@@ -114,8 +123,13 @@ const SortingReactDnd: React.FC = () => {
 
   // 处理从数据源拖拽到具体树节点
   const handleDropToTreeNode = (item: any) => {
+    console.log('📦 数据源改变 - 从数据源拖拽到具体树节点:', item);
     // 根据项目内容从数据源中移除对应的项目
-    dataSourceRef.current.setDataSource(prev => prev.filter(dataItem => dataItem !== item));
+    dataSourceRef.current.setDataSource(prev => {
+      const newDataSource = prev.filter(dataItem => dataItem !== item);
+      console.log('📦 数据源改变 - 移除项目后当前数据源:', newDataSource);
+      return newDataSource;
+    });
   };
 
   return (

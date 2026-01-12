@@ -52,6 +52,7 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
         });
     };
     const newTreeData = removeNode(treeData);
+    console.log('🌲 树节点改变 - 删除节点:', nodeId, '当前树数据:', newTreeData);
     setTreeData(newTreeData);
   }, [treeData]);
 
@@ -63,8 +64,8 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
     };
     
     const newNode: TreeNode = {
-      id: generateUniqueId(),
-      text: item.text || item.label || '新节点',
+      id: item.id || generateUniqueId(),
+      text: item.text || item.label || item.title || '新节点',
       link: item.link || undefined,
       items: item.items ? [...item.items] : undefined
     };
@@ -88,12 +89,19 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
           return node;
         });
       };
-      setTreeData(prev => addToParent(prev));
+      setTreeData(prev => {
+        const newTreeData = addToParent(prev);
+        console.log('🌲 树节点改变 - 添加子节点:', newNode, '父节点ID:', parentId, '当前树数据:', newTreeData);
+        return newTreeData;
+      });
     } else {
       // 添加到根节点
-      setTreeData(prev => [...prev, newNode]);
+      setTreeData(prev => {
+        const newTreeData = [...prev, newNode];
+        console.log('🌲 树节点改变 - 添加根节点:', newNode, '当前树数据:', newTreeData);
+        return newTreeData;
+      });
     }
-    
     // 通知父组件数据源项目已被使用
     if (onDropFromDataSource) {
       onDropFromDataSource(item);
@@ -217,7 +225,11 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
             return n;
           });
         };
-        setTreeData(prev => addChild(prev));
+        setTreeData(prev => {
+          const newTreeData = addChild(prev);
+          console.log('🌲 树节点改变 - 右键添加子节点:', newNode, '父节点ID:', node.id, '当前树数据:', newTreeData);
+          return newTreeData;
+        });
       } else {
         // 添加同级节点
         const addSibling = (nodes: TreeNode[]): TreeNode[] => {
@@ -242,7 +254,11 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
           }
           return nodes;
         };
-        setTreeData(prev => addSibling(prev));
+        setTreeData(prev => {
+          const newTreeData = addSibling(prev);
+          console.log('🌲 树节点改变 - 右键添加同级节点:', newNode, '参考节点ID:', node.id, '当前树数据:', newTreeData);
+          return newTreeData;
+        });
       }
 
       setDialogOpen(false);
