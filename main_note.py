@@ -67,11 +67,25 @@ def get_db_cursor():
 
 
 # region note
-class NoteData(BaseModel):
+class NoteInfo(BaseModel):
     id: str = None
     title: str
     content: str
     tags: str = None
+
+class NoteTree(BaseModel):
+    id: str = None
+    folderTd: str = None
+    nodeTxt: str
+    parentId: str = None
+    noteId: str = None
+    sort: int
+
+class NoteFolder(BaseModel):
+    id: str = None
+    title: str
+    parentId: str = None
+    linkTxt: str
 
 
 # 笔记列表 不包含内容
@@ -133,7 +147,7 @@ def get_right_datasource():
 
         data = [{
             'id': row['id'],
-            'title': row['title'],
+            'text': row['title'],
             'tags': row['tags'],
             'update_time': row['update_time']
         } for row in results]
@@ -143,7 +157,7 @@ def get_right_datasource():
 
 # 添加笔记
 @app.post('/notes/add')
-def add_note(info: NoteData):
+def add_note(info: NoteInfo):
     with get_db_cursor() as cursor:
         query = """
                 INSERT INTO note_info 
@@ -164,6 +178,73 @@ def add_note(info: NoteData):
             "code": 200,
             "data": None,
             "message": "保存成功"
+        }
+
+
+@app.post('/notes/add_tree_node')
+def add_tree_note(info: NoteTree):
+    with get_db_cursor() as cursor:
+        query = """
+                INSERT INTO note_tree 
+                (id, folder_id, node_txt, parent_id, note_id, sort) 
+                VALUES (%s, %s, %s, %s, %s, %s)
+                """
+        params = (
+            info.id,
+            info.folderId,
+            info.nodeTxt,
+            info.parentId,
+            info.noteId,
+            info.sort
+        )
+        cursor.execute(query, params)
+
+        return {
+            "code": 200,
+            "data": None,
+            "message": "保存成功"
+        }
+
+
+@app.post('/notes/add_tree_folder')
+def add_tree_note(info: NoteFolder):
+    with get_db_cursor() as cursor:
+        query = """
+                INSERT INTO note_folder 
+                (id, title, parent_id, link_txt) 
+                VALUES (%s, %s, %s, %s)
+                """
+        params = (
+            info.id,
+            info.title,
+            info.parentId,
+            info.linkTxt
+        )
+        cursor.execute(query, params)
+
+        return {
+            "code": 200,
+            "data": None,
+            "message": "保存成功"
+        }
+
+
+# 删除树节点  也可能是删除根文件夹
+@app.get('/notes/remove_tree_node')
+def remove_tree_note(id: str):
+    with get_db_cursor() as cursor:
+        query = """
+                DELETE FROM note_tree WHERE id=%s 
+                """
+        # query = """
+        #         DELETE FROM note_folder WHERE id=%s
+        #         """
+        params = (id)
+        cursor.execute(query, params)
+        return {
+            "code": 200,
+            "data": None,
+            "message": "移除成功"
         }
 
 
@@ -293,7 +374,7 @@ def build_nested_structure(results):
             'node_txt': node_txt,
             'parent_id': item.get('parent_id'),
             'note_id': item.get('note_id'),
-            'title': item.get('title'),
+            'text': item.get('title'),
             'link_txt': item.get('link_txt'),
             # 添加排序字段 - 可以根据需要调整排序逻辑
             'sort_order': int(item.get('sort', 0))  # 默认按id排序
@@ -389,8 +470,8 @@ def build_nested_structure(results):
                 top_entry = {
                     'id': top_nodes[0]['id'] + '-0',
                     'sort': top_nodes[0]['id'],
-                    'text': top_nodes[0]['title'] if top_nodes else link_txt + '手册',
-                    'items': items_list
+                    'text': top_nodes[0]['text'] if top_nodes else link_txt + '手册',
+                    'items': items_list,
                 }
                 # id: string;
                 # label: string;

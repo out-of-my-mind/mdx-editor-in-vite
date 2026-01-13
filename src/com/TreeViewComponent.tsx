@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { SimpleTreeView, TreeItem } from '@mui/x-tree-view';
-import { Paper, Box, Typography, Menu, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button } from '@mui/material';
+import { Paper, Box, Typography, Menu, MenuItem, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, AlertProps } from '@mui/material';
 import FolderIcon from '@mui/icons-material/Folder';
 import BookmarkIcon from '@mui/icons-material/Bookmark';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -8,6 +8,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import AddIcon from '@mui/icons-material/Add';
 import DriveFileRenameOutlineIcon from '@mui/icons-material/DriveFileRenameOutline';
 import { useDrag, useDrop } from 'react-dnd';
+import AlertMessage from './AlertMessage';
 import '../styles/TreeView.css';
 
 interface TreeViewComponentProps {
@@ -18,7 +19,7 @@ interface TreeViewComponentProps {
 // 定义书签树节点的数据结构
 interface TreeNode {
   id: string;
-  title: string;
+  text: string;
   items?: TreeNode[];
   link?: string;
   collapsed?: string;
@@ -37,7 +38,71 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
-
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success' as AlertProps['severity']
+  });
+  const fetchTreeData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}/vitepress/GetVitePressSidebar`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const result: ApiResponse = await response.json();
+      
+      // 检查接口返回是否成功
+      if (result.code === 200) {
+        // 将 data 对象中的所有树节点数组合并为一个数组
+        const allNodes: TreeNode[] = [];
+        const expanded: string[] = [];
+        
+        const collectExpanded = (nodes: TreeNode[]) => {
+          nodes.forEach(node => {
+            if (node.collapsed === 'false') {
+              expanded.push(node.id);
+            }
+            if (node.items) {
+              collectExpanded(node.items);
+            }
+          });
+        };
+        
+        Object.values(result.data).forEach(nodeArray => {
+          allNodes.push(...nodeArray);
+          collectExpanded(nodeArray);
+        });
+        
+        setTreeData(allNodes);
+        setExpandedItems(expanded);
+      } else {
+        throw new Error(result.message || '接口返回失败');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '获取数据失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+  const fetchRemoveTreeNode = async (id: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}/notes/remove_tree_node?id=${id}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const result: ApiResponse = await response.json();
+      return result;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '移除节点失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+  // 移除树节点
   const handleRemoveNode = useCallback((nodeId: string) => {
     const removeNode = (nodes: TreeNode[]): TreeNode[] => {
       return nodes
@@ -52,10 +117,26 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
           return node;
         });
     };
-    const newTreeData = removeNode(treeData);
-    console.log('🌲 树节点改变 - 删除节点:', nodeId, '当前树数据:', newTreeData);
-    setTreeData(newTreeData);
+    fetchRemoveTreeNode(nodeId).then(res => {
+      if (res?.code === 200) {
+        setSnackbar({
+          open: true,
+          message: res?.message,
+          severity: 'success'
+        });
+        const newTreeData = removeNode(treeData);
+        console.log('🌲 树节点改变 - 删除节点:', nodeId, '当前树数据:', newTreeData);
+        setTreeData(newTreeData);
+      } else {
+        setSnackbar({
+          open: true,
+          message: res?.message || '接口返回失败',
+          severity: 'error'
+        });
+      }
+    });
   }, [treeData]);
+  
   // 处理添加节点到树中
   const handleAddNode = useCallback((item: any, parentId?: string) => {
     // 生成唯一ID
@@ -65,7 +146,7 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
     
     const newNode: TreeNode = {
       id: item.id || generateUniqueId(),
-      title: item.title || '新节点',
+      text: item.text || '新节点',
       link: item.link || undefined,
       items: item.items ? [...item.items] : undefined
     };
@@ -181,7 +262,7 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
     // 打开弹窗
     const handleOpenDialog = (type: dialogmode) => {
       setDialogType(type);
-      setNodeName(type === 'rename' ? node.title : '');
+      setNodeName(type === 'rename' ? node.text : '');
       setDialogOpen(true);
       handleClose();
     };
@@ -192,7 +273,7 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
       }
       const newNode: TreeNode = {
         id: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        title: nodeName.trim(),
+        text: nodeName.trim(),
       };
 
       if (dialogType === 'child') {
@@ -256,7 +337,7 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
             if (nodes[i].id === node.id) {
               // 在当前节点后插入同级节点
               const newNodes = [...nodes];
-              newNodes.splice(i, 1, {...node, title: nodeName.trim()});
+              newNodes.splice(i, 1, {...node, text: nodeName.trim()});
               return newNodes;
             }
             if (nodes[i].items) {
@@ -313,7 +394,7 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
               ) : (
                 <BookmarkIcon sx={{ mr: 1 }} />
               )}
-              {node.title}
+              {node.text}
               {isOver && (
                 <Typography variant="caption" color="primary" sx={{ ml: 1 }}>
                   释放以添加
@@ -391,79 +472,42 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
     );
   };
 
-  // 从接口获取树数据的函数
-  const fetchTreeData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}/vitepress/GetVitePressSidebar`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const result: ApiResponse = await response.json();
-      
-      // 检查接口返回是否成功
-      if (result.code === 200) {
-        // 将 data 对象中的所有树节点数组合并为一个数组
-        const allNodes: TreeNode[] = [];
-        const expanded: string[] = [];
-        
-        const collectExpanded = (nodes: TreeNode[]) => {
-          nodes.forEach(node => {
-            if (node.collapsed === 'false') {
-              expanded.push(node.id);
-            }
-            if (node.items) {
-              collectExpanded(node.items);
-            }
-          });
-        };
-        
-        Object.values(result.data).forEach(nodeArray => {
-          allNodes.push(...nodeArray);
-          collectExpanded(nodeArray);
-        });
-        
-        setTreeData(allNodes);
-        setExpandedItems(expanded);
-      } else {
-        throw new Error(result.message || '接口返回失败');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '获取数据失败');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // 使用useEffect钩子在组件挂载时调用接口
   useEffect(() => {
     fetchTreeData();
   }, []);
 
   return (
-    <Paper className='tree-view-paper' elevation={0}>
-      <Box className='tree-view-box'>
-        {loading ? (
-          <Box sx={{ p: 2 }}>加载中...</Box>
-        ) : error ? (
-          <Box sx={{ p: 2, color: 'error.main' }}>错误：{error}</Box>
-        ) : (
-          <SimpleTreeView
-            aria-label="书签树"
-            defaultExpandedItems={expandedItems}
-            slots={{
-              collapseIcon: ExpandMoreIcon,
-              expandIcon: ChevronRightIcon,
-            }}
-          >
-            {treeData.map((node) => (
-              <DraggableTreeItem key={node.id} node={node} onDrop={handleAddNode} />
-            ))}
-          </SimpleTreeView>
-        )}
-      </Box>
-    </Paper>
+    <>
+      <Paper className='tree-view-paper' elevation={0}>
+        <Box className='tree-view-box'>
+          {loading ? (
+            <Box sx={{ p: 2 }}>加载中...</Box>
+          ) : error ? (
+            <Box sx={{ p: 2, color: 'error.main' }}>错误：{error}</Box>
+          ) : (
+            <SimpleTreeView
+              aria-label="书签树"
+              defaultExpandedItems={expandedItems}
+              slots={{
+                collapseIcon: ExpandMoreIcon,
+                expandIcon: ChevronRightIcon,
+              }}
+            >
+              {treeData.map((node) => (
+                <DraggableTreeItem key={node.id} node={node} onDrop={handleAddNode} />
+              ))}
+            </SimpleTreeView>
+          )}
+        </Box>
+      </Paper>
+      {snackbar.open && (
+        <AlertMessage
+          message={snackbar.message}
+          severity={snackbar.severity}
+        />
+      )}
+    </>
   );
 });
 

@@ -6,7 +6,7 @@ import '../styles/TreeView.css';
 // 定义右侧的数据结构
 interface SourceItem {
   id: string;
-  title: string;
+  text: string;
   tags: string[];
 }
 interface ApiResponse {
@@ -47,7 +47,7 @@ const DataSourceItem: React.FC<{ item: any; index: number; onRemove: (id: string
         },
       }}
     >
-      <Typography variant="body1">{item.title}</Typography>
+      <Typography variant="body1">{item.text}</Typography>
       <Typography 
         variant="body2" 
         color="error" 

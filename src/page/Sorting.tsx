@@ -97,7 +97,6 @@ const SortingReactDnd: React.FC = () => {
     console.log('📦 数据源改变 - 从树拖拽添加项目:', node);
     dataSourceRef.current.handleSetDataSource(prev => {
       const newDataSource = [...prev, node];
-      console.log('📦 数据源改变 - 添加项目后当前数据源:', newDataSource);
       return newDataSource;
     });
     // 可选：从树中移除节点
