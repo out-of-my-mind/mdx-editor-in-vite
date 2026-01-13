@@ -6,6 +6,7 @@ import BookmarkIcon from '@mui/icons-material/Bookmark';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import AddIcon from '@mui/icons-material/Add';
+import DriveFileRenameOutlineIcon from '@mui/icons-material/DriveFileRenameOutline';
 import { useDrag, useDrop } from 'react-dnd';
 import '../styles/TreeView.css';
 
@@ -17,7 +18,7 @@ interface TreeViewComponentProps {
 // 定义书签树节点的数据结构
 interface TreeNode {
   id: string;
-  text: string;
+  title: string;
   items?: TreeNode[];
   link?: string;
   collapsed?: string;
@@ -55,7 +56,6 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
     console.log('🌲 树节点改变 - 删除节点:', nodeId, '当前树数据:', newTreeData);
     setTreeData(newTreeData);
   }, [treeData]);
-
   // 处理添加节点到树中
   const handleAddNode = useCallback((item: any, parentId?: string) => {
     // 生成唯一ID
@@ -65,7 +65,7 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
     
     const newNode: TreeNode = {
       id: item.id || generateUniqueId(),
-      text: item.text || item.label || item.title || '新节点',
+      title: item.title || '新节点',
       link: item.link || undefined,
       items: item.items ? [...item.items] : undefined
     };
@@ -116,8 +116,6 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
   // 可拖拽和可放置的树节点组件
   const DraggableTreeItem: React.FC<{ node: TreeNode; onDrop: (item: any, parentId: string) => void }> = ({ node, onDrop }) => {
     const isFolder = !!node.items;
-    const isBookmark = !!node.link;
-
     // 右键菜单状态
     const [contextMenu, setContextMenu] = useState<{
       mouseX: number;
@@ -127,7 +125,8 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
     // 弹窗状态
     const [dialogOpen, setDialogOpen] = useState(false);
     const [nodeName, setNodeName] = useState('');
-    const [dialogType, setDialogType] = useState<'child' | 'sibling'>('child');
+    type dialogmode = 'child' | 'sibling' | 'rename';
+    const [dialogType, setDialogType] = useState<dialogmode>('child');
 
     const [{ isDragging }, drag] = useDrag(() => ({
       type: 'tree_node',
@@ -179,31 +178,21 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
       setContextMenu(null);
     };
 
-    // 打开添加子节点弹窗
-    const handleOpenAddChildDialog = () => {
-      setDialogType('child');
-      setNodeName('');
+    // 打开弹窗
+    const handleOpenDialog = (type: dialogmode) => {
+      setDialogType(type);
+      setNodeName(type === 'rename' ? node.title : '');
       setDialogOpen(true);
       handleClose();
     };
-
-    // 打开添加同级节点弹窗
-    const handleOpenAddSiblingDialog = () => {
-      setDialogType('sibling');
-      setNodeName('');
-      setDialogOpen(true);
-      handleClose();
-    };
-
-    // 确认添加节点
+    // 确认节点
     const handleConfirmAddNode = () => {
       if (!nodeName.trim()) {
         return;
       }
-
       const newNode: TreeNode = {
         id: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        text: nodeName.trim(),
+        title: nodeName.trim(),
       };
 
       if (dialogType === 'child') {
@@ -230,7 +219,7 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
           console.log('🌲 树节点改变 - 右键添加子节点:', newNode, '父节点ID:', node.id, '当前树数据:', newTreeData);
           return newTreeData;
         });
-      } else {
+      } else if(dialogType === 'sibling'){
         // 添加同级节点
         const addSibling = (nodes: TreeNode[]): TreeNode[] => {
           // 找到父节点并添加同级节点
@@ -259,8 +248,36 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
           console.log('🌲 树节点改变 - 右键添加同级节点:', newNode, '参考节点ID:', node.id, '当前树数据:', newTreeData);
           return newTreeData;
         });
+      } else if(dialogType === 'rename'){
+        // 重命名节点
+        const rename = (nodes: TreeNode[]): TreeNode[] => {
+          // 找到父节点并添加同级节点
+          for (let i = 0; i < nodes.length; i++) {
+            if (nodes[i].id === node.id) {
+              // 在当前节点后插入同级节点
+              const newNodes = [...nodes];
+              newNodes.splice(i, 1, {...node, title: nodeName.trim()});
+              return newNodes;
+            }
+            if (nodes[i].items) {
+              const newItems = rename(nodes[i].items!);
+              if (newItems !== nodes[i].items) {
+                return [
+                  ...nodes.slice(0, i),
+                  { ...nodes[i], items: newItems },
+                  ...nodes.slice(i + 1)
+                ];
+              }
+            }
+          }
+          return nodes;
+        };
+        setTreeData(prev => {
+          const newTreeData = rename(prev);
+          console.log('🌲 树节点改变 - 右键添加同级节点:', newNode, '参考节点ID:', node.id, '当前树数据:', newTreeData);
+          return newTreeData;
+        });
       }
-
       setDialogOpen(false);
       setNodeName('');
     };
@@ -296,7 +313,7 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
               ) : (
                 <BookmarkIcon sx={{ mr: 1 }} />
               )}
-              {node.text}
+              {node.title}
               {isOver && (
                 <Typography variant="caption" color="primary" sx={{ ml: 1 }}>
                   释放以添加
@@ -323,20 +340,24 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
               ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
               : undefined}
         >
-          <MenuItem onClick={handleOpenAddChildDialog}>
+          <MenuItem onClick={() => handleOpenDialog('child')}>
             <AddIcon sx={{ mr: 1 }} />
             添加子节点
           </MenuItem>
-          <MenuItem onClick={handleOpenAddSiblingDialog}>
+          <MenuItem onClick={() =>handleOpenDialog('sibling')}>
             <AddIcon sx={{ mr: 1 }} />
             添加同级节点
+          </MenuItem>
+          <MenuItem onClick={() => handleOpenDialog('rename')}>
+            <DriveFileRenameOutlineIcon sx={{ mr: 1 }} />
+            重命名
           </MenuItem>
         </Menu>
         
         {/* 节点名称输入弹窗 */}
         <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
           <DialogTitle>
-            {dialogType === 'child' ? '添加子节点' : '添加同级节点'}
+            {dialogType === 'child' ? '添加子节点' : (dialogType === 'sibling' ? '添加同级节点': '重命名节点')}
           </DialogTitle>
           <DialogContent>
             <TextField

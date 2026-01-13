@@ -6,7 +6,7 @@ import '../styles/TreeView.css';
 // 定义右侧的数据结构
 interface SourceItem {
   id: string;
-  text: string;
+  title: string;
   tags: string[];
 }
 interface ApiResponse {
@@ -18,7 +18,7 @@ interface DataSourceComponentProps {
   onDrop?: (node: any) => void;
 }
 // 数据源项组件
-const DataSourceItem: React.FC<{ item: any; index: number; onRemove: (index: number) => void }> = ({ 
+const DataSourceItem: React.FC<{ item: any; index: number; onRemove: (id: string) => void }> = ({ 
   item, 
   index, 
   onRemove 
@@ -47,12 +47,12 @@ const DataSourceItem: React.FC<{ item: any; index: number; onRemove: (index: num
         },
       }}
     >
-      <Typography variant="body1">{item.text || item.label || item.title}</Typography>
+      <Typography variant="body1">{item.title}</Typography>
       <Typography 
         variant="body2" 
         color="error" 
         sx={{ cursor: 'pointer', mt: 1 }}
-        onClick={() => onRemove(index)}
+        onClick={() => onRemove(item.id)}
       >
         移除
       </Typography>
@@ -108,19 +108,18 @@ const DataSourceDropZone = forwardRef<any, DataSourceComponentProps>(({ onDrop }
     fetchDataSource();
   }, []);
   useImperativeHandle(ref, () => ({
-    setDataSource: (newDataSource: any[] | ((prev: any[]) => any[])) => {
+    handleSetDataSource: (newDataSource: any[] | ((o: any[]) => any[])) => {
       setDataSource(prev => {
         const updatedDataSource = typeof newDataSource === 'function' ? newDataSource(prev) : newDataSource;
-        console.log('📦 数据源改变 - 更新数据源:', '当前数据源:', updatedDataSource);
         return updatedDataSource;
       });
     }
   }));
   // 处理从数据源移除项目
-  const handleRemoveFromDataSource = (index: number) => {
+  const handleRemoveFromDataSource = (id: string) => {
     setDataSource(prev => {
-      const newDataSource = prev.filter((_, i) => i !== index);
-      console.log('📦 数据源改变 - 移除项目:', prev[index], '索引:', index, '当前数据源:', newDataSource);
+      const newDataSource = prev.filter((item) => item.id !== id);
+      console.log('📦 数据源改变 - 移除项目:', id, '当前数据源:', newDataSource);
       return newDataSource;
     });
   };
