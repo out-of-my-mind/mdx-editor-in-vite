@@ -138,7 +138,7 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
   }, [treeData]);
   
   // 处理添加节点到树中
-  const handleAddNode = useCallback((item: any, parentId?: string) => {
+  const handleAddNode = useCallback((item: any, dropnode: TreeNode, position: 'top' | 'bottom' | 'child' = 'child') => {
     // 生成唯一ID
     const generateUniqueId = () => {
       return `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -151,11 +151,13 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
       items: item.items ? [...item.items] : undefined
     };
 
-    if (parentId) {
-      // 添加到指定父节点
+    if (position === 'child' && dropnode) {
+      // 添加为子节点
       const addToParent = (nodes: TreeNode[]): TreeNode[] => {
         return nodes.map(node => {
-          if (node.id === parentId) {
+          if (node.id === dropnode.id) {
+            console.log('🌲 树节点改变 - 父节点:', node)
+            newNode.link = 
             return {
               ...node,
               items: [...(node.items || []), newNode]
@@ -173,6 +175,60 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
       setTreeData(prev => {
         const newTreeData = addToParent(prev);
         console.log('🌲 树节点改变 - 添加子节点:', newNode, '父节点ID:', parentId, '当前树数据:', newTreeData);
+        return newTreeData;
+      });
+    } else if (position === 'top' && dropnode) {
+      // 插入到目标节点上方
+      const insertBefore = (nodes: TreeNode[]): TreeNode[] => {
+        for (let i = 0; i < nodes.length; i++) {
+          if (nodes[i].id === dropnode.id) {
+            const newNodes = [...nodes];
+            newNodes.splice(i, 0, newNode);
+            return newNodes;
+          }
+          if (nodes[i].items) {
+            const newItems = insertBefore(nodes[i].items!);
+            if (newItems !== nodes[i].items) {
+              return [
+                ...nodes.slice(0, i),
+                { ...nodes[i], items: newItems },
+                ...nodes.slice(i + 1)
+              ];
+            }
+          }
+        }
+        return nodes;
+      };
+      setTreeData(prev => {
+        const newTreeData = insertBefore(prev);
+        console.log('🌲 树节点改变 - 插入到上方:', newNode, '参考节点:', dropnode, '当前树数据:', newTreeData);
+        return newTreeData;
+      });
+    } else if (position === 'bottom' && dropnode) {
+      // 插入到目标节点下方
+      const insertAfter = (nodes: TreeNode[]): TreeNode[] => {
+        for (let i = 0; i < nodes.length; i++) {
+          if (nodes[i].id === dropnode.id) {
+            const newNodes = [...nodes];
+            newNodes.splice(i + 1, 0, newNode);
+            return newNodes;
+          }
+          if (nodes[i].items) {
+            const newItems = insertAfter(nodes[i].items!);
+            if (newItems !== nodes[i].items) {
+              return [
+                ...nodes.slice(0, i),
+                { ...nodes[i], items: newItems },
+                ...nodes.slice(i + 1)
+              ];
+            }
+          }
+        }
+        return nodes;
+      };
+      setTreeData(prev => {
+        const newTreeData = insertAfter(prev);
+        console.log('🌲 树节点改变 - 插入到下方:', newNode, '参考节点:', dropnode, '当前树数据:', newTreeData);
         return newTreeData;
       });
     } else {
@@ -193,20 +249,20 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
     handleRemoveNode,
     handleAddNode
   }));
-
+  type dialogmode = 'child' | 'sibling' | 'rename';
+  type dropPositionMode = 'top' | 'bottom' | 'child' | null;
   // 可拖拽和可放置的树节点组件
-  const DraggableTreeItem: React.FC<{ node: TreeNode; onDrop: (item: any, parentId: string) => void }> = ({ node, onDrop }) => {
+  const DraggableTreeItem: React.FC<{ node: TreeNode; onDrop: (item: any, dropnode: TreeNode, position: dropPositionMode) => void }> = ({ node, onDrop }) => {
     const isFolder = !!node.items;
     // 右键菜单状态
     const [contextMenu, setContextMenu] = useState<{
       mouseX: number;
       mouseY: number;
     } | null>(null);
-
     // 弹窗状态
     const [dialogOpen, setDialogOpen] = useState(false);
     const [nodeName, setNodeName] = useState('');
-    type dialogmode = 'child' | 'sibling' | 'rename';
+    
     const [dialogType, setDialogType] = useState<dialogmode>('child');
 
     const [{ isDragging }, drag] = useDrag(() => ({
@@ -221,24 +277,70 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
       }),
     }), [node]);
 
+    // 拖拽位置状态
+    const [dropPosition, setDropPosition] = useState<dropPositionMode>(null);
+    const dropTargetRef = React.useRef<HTMLDivElement>(null);
+
     const [{ isOver, canDrop }, drop] = useDrop(() => ({
       accept: ['data_source_item'],
-      drop: (item: any) => {
-        if (item.source === 'datasource') {
-          // 从数据源拖拽到树节点
-          onDrop(item.item, node.id);
+      hover: (item: any, monitor) => {
+        if (!monitor.canDrop()) return;
+        
+        const clientOffset = monitor.getClientOffset();
+        if (!clientOffset || !dropTargetRef.current) return;
+        
+        const hoverBoundingRect = dropTargetRef.current.getBoundingClientRect();
+        const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+        const hoverClientY = clientOffset.y - hoverBoundingRect.top;
+        
+        // 检查鼠标是否在节点边界内
+        const isInside = 
+          clientOffset.x >= hoverBoundingRect.left &&
+          clientOffset.x <= hoverBoundingRect.right &&
+          clientOffset.y >= hoverBoundingRect.top &&
+          clientOffset.y <= hoverBoundingRect.bottom;
+        
+        if (!isInside) {
+          setDropPosition(null);
+          return;
         }
+        
+        if(!node.link){
+          setDropPosition('child');
+        } else if (hoverClientY < hoverMiddleY - 10) {
+          setDropPosition('top');
+        } else if (hoverClientY > hoverMiddleY + 10) {
+          setDropPosition('bottom');
+        } else  {
+          setDropPosition('bottom')
+        }
+      },
+      drop: (item: any, monitor) => {
+        if (item.source === 'datasource') {
+          const position = dropPosition || null;
+          console.log('🎯 拖拽位置:', position, '目标节点:', node.id);
+          onDrop(item.item, node, position);
+        }
+        setDropPosition(null);
       },
       collect: (monitor) => ({
         isOver: monitor.isOver(),
         canDrop: monitor.canDrop(),
       }),
-    }), [node, onDrop]);
+    }), [node, onDrop, dropPosition]);
+
+    // 当鼠标离开节点时清除位置状态
+    React.useEffect(() => {
+      if (!isOver) {
+        setDropPosition(null);
+      }
+    }, [isOver]);
 
     // 合并拖拽和放置的 ref
     const combinedRef = (element: any) => {
       drag(element);
       drop(element);
+      dropTargetRef.current = element;
     };
 
     // 处理右键点击
@@ -387,6 +489,21 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
                 '&:hover': {
                   backgroundColor: 'rgba(0, 0, 0, 0.04)',
                 },
+                ...(dropPosition === 'top' && {
+                  borderTop: '3px solid #1976d2',
+                  borderRight: 'none',
+                  borderBottom: 'none',
+                  borderLeft: 'none',
+                }),
+                ...(dropPosition === 'bottom' && {
+                  borderTop: 'none',
+                  borderRight: 'none',
+                  borderBottom: '3px solid #1976d2',
+                  borderLeft: 'none',
+                }),
+                ...(dropPosition === 'child' && {
+                  border: '2px solid #1976d2',
+                }),
               }}
             >
               {isFolder ? (
@@ -397,7 +514,7 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onR
               {node.text}
               {isOver && (
                 <Typography variant="caption" color="primary" sx={{ ml: 1 }}>
-                  释放以添加
+                  {dropPosition === 'top' ? '插入到上方' : dropPosition === 'bottom' ? '插入到下方' : '添加为子节点'}
                 </Typography>
               )}
             </Box>

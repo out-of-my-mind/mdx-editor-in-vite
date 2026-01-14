@@ -377,7 +377,7 @@ def build_nested_structure(results):
             'text': item.get('title'),
             'link_txt': item.get('link_txt'),
             # 添加排序字段 - 可以根据需要调整排序逻辑
-            'sort_order': int(item.get('sort', 0))  # 默认按id排序
+            'sort_order': float(item.get('sort', 0))  # 默认按id排序
         }
 
         # 处理 parent_id
