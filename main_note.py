@@ -75,16 +75,16 @@ class NoteInfo(BaseModel):
 
 class NoteTree(BaseModel):
     id: str = None
-    folderTd: str = None
-    nodeTxt: str
-    parentId: str = None
+    folderId: str = None
+    text: str
+    parent_id: str = None
     noteId: str = None
-    sort: int
+    sort: float
 
 class NoteFolder(BaseModel):
     id: str = None
     title: str
-    parentId: str = None
+    parent_id: str = None
     linkTxt: str
 
 
@@ -192,9 +192,9 @@ def add_tree_note(info: NoteTree):
         params = (
             info.id,
             info.folderId,
-            info.nodeTxt,
-            info.parentId,
-            info.noteId,
+            info.text,
+            info.parent_id,
+            info.id,
             info.sort
         )
         cursor.execute(query, params)
@@ -217,7 +217,7 @@ def add_tree_note(info: NoteFolder):
         params = (
             info.id,
             info.title,
-            info.parentId,
+            info.parent_id,
             info.linkTxt
         )
         cursor.execute(query, params)
@@ -370,7 +370,7 @@ def build_nested_structure(results):
 
         processed_item = {
             'id': str(item.get('id', '')),
-            'folder_id': str(item.get('folder_id', '')),
+            'folderId': str(item.get('folder_id', '')),
             'node_txt': node_txt,
             'parent_id': item.get('parent_id'),
             'note_id': item.get('note_id'),
@@ -401,7 +401,7 @@ def build_nested_structure(results):
         # 按 folder_id 分组
         folder_groups = {}
         for item in items:
-            folder_id = item['folder_id']
+            folder_id = item['folderId']
             if folder_id not in folder_groups:
                 folder_groups[folder_id] = []
             folder_groups[folder_id].append(item)
@@ -430,7 +430,10 @@ def build_nested_structure(results):
                     node_dict = {
                         'id': top_node['id'],
                         'sort': top_node['sort_order'],
-                        'text': top_node['node_txt']
+                        'text': top_node['node_txt'],
+                        'link_txt': top_node['link_txt'],
+                        'folderId': top_node['folderId'],
+                        'parent_id': top_node['parent_id']
                     }
 
                     # 如果 note_id 存在，添加 link
@@ -446,7 +449,10 @@ def build_nested_structure(results):
                         child_dict = {
                             'id': child['id'],
                             'sort': child['sort_order'],
-                            'text': child['node_txt']
+                            'text': child['node_txt'],
+                            'link_txt': child['link_txt'],
+                            'folderId': child['folderId'],
+                            'parent_id': child['parent_id']
                         }
                         if child['note_id'] not in [None, '', 'None']:
                             child_dict['link'] = f"/{link_txt}/{child['note_id']}"
@@ -458,7 +464,10 @@ def build_nested_structure(results):
                     node_dict = {
                         'id': top_node['id'],
                         'sort': top_node['sort_order'],
-                        'text': top_node['node_txt']
+                        'text': top_node['node_txt'],
+                        'link_txt': top_node['link_txt'],
+                        'folderId': top_node['folderId'],
+                        'parent_id': top_node['parent_id']
                     }
                     if top_node['note_id'] not in [None, '', 'None']:
                         node_dict['link'] = f"/{link_txt}/{top_node['note_id']}"
@@ -472,6 +481,9 @@ def build_nested_structure(results):
                     'sort': top_nodes[0]['id'],
                     'text': top_nodes[0]['text'] if top_nodes else link_txt + '手册',
                     'items': items_list,
+                    'link_txt': top_nodes[0]['link_txt'],
+                    'folderId': top_nodes[0]['folderId'],
+                    'parent_id': top_nodes[0]['parent_id']
                 }
                 # id: string;
                 # label: string;
