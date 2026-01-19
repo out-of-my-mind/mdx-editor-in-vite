@@ -15,7 +15,6 @@ interface TreeViewComponentProps {
   // onRemoveNode?: (nodeId: string) => void;
   onDropFromDataSource?: (item: any) => void;
 }
-
 // 定义书签树节点的数据结构
 interface TreeNode {
   id: string;
@@ -28,14 +27,21 @@ interface TreeNode {
   parent_id?: string;
   sort: number;
 }
-
+interface TreeFolder {
+  id: string;
+  title: string;
+  link_txt?: string;
+}
 // 定义接口返回数据结构
 interface ApiResponse {
   code: number;
   data: Record<string, TreeNode[]>;
   message: string;
 }
-
+// 生成唯一ID
+const generateUniqueId = () => {
+  return `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+};
 // 定义组件内部状态
 const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onDropFromDataSource }, ref) => {
   const [treeData, setTreeData] = useState<TreeNode[]>([]);
@@ -75,6 +81,7 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
         
         Object.values(result.data).forEach(nodeArray => {
           allNodes.push(...nodeArray);
+          console.log('收集到的节点:', nodeArray);
           collectExpanded(nodeArray);
         });
         
@@ -125,6 +132,27 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
       setLoading(false);
     }
   };
+  // 添加目录节点
+  const fetchAddFolderNode = async (note: TreeFolder) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}/notes/add_tree_folder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(note)
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const result: ApiResponse = await response.json();
+      return result;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '添加目录失败');
+    } finally {
+      setLoading(false);
+    }
+  };
   // 移除树节点
   const handleRemoveNode = useCallback((nodeId: string) => {
     const removeNode = (nodes: TreeNode[]): TreeNode[] => {
@@ -162,11 +190,6 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
   
   // 处理添加节点到树中
   const handleAddNode = useCallback((item: any, dropnode: TreeNode, position: 'top' | 'bottom' | 'child' = 'child') => {
-    // 生成唯一ID
-    const generateUniqueId = () => {
-      return `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    };
-    
     const newNode: TreeNode = {
       id: item.id || generateUniqueId(),
       text: item.text || '新节点',
@@ -337,13 +360,6 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
         console.log('🌲 树节点改变 - 插入到下方:', newNode, '参考节点:', dropnode, '当前树数据:', newTreeData);
         return newTreeData;
       });
-    } else {
-      // 添加到根节点
-      setTreeData(prev => {
-        const newTreeData = [...prev, newNode];
-        console.log('🌲 树节点改变 - 添加根节点:', newNode, '当前树数据:', newTreeData);
-        return newTreeData;
-      });
     }
     // 通知父组件数据源项目已被使用
     if (onDropFromDataSource) {
@@ -367,7 +383,7 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
     } | null>(null);
     // 弹窗状态
     const [dialogOpen, setDialogOpen] = useState(false);
-    const [nodeName, setNodeName] = useState('');
+    const [nodeName, setNodeName] = useState<{ title?: string, link_txt?: string }>({ title: '' });
     
     const [dialogType, setDialogType] = useState<dialogmode>('child');
 
@@ -470,22 +486,26 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
     // 打开弹窗
     const handleOpenDialog = (type: dialogmode) => {
       setDialogType(type);
-      setNodeName(type === 'rename' ? node.text : '');
+      console.log('打开弹窗，点击节点', node)
+      setNodeName(type === 'rename' ? { title: node.text} : {  });
       setDialogOpen(true);
       handleClose();
     };
     // 确认节点
     const handleConfirmAddNode = () => {
-      if (!nodeName.trim()) {
+      if (!nodeName.title || !nodeName.title.trim()) {
         return;
       }
       const newNode: TreeNode = {
-        id: `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        text: nodeName.trim(),
+        id: generateUniqueId(),
+        text: nodeName.title.trim(),
+        items: [],
+        link: nodeName.link_txt || undefined,
+        folderId: node.folderId,
+        parent_id: node.parent_id,
+        sort: 0
       };
-
-      if (dialogType === 'child') {
-        // 添加子节点
+      if (dialogType === 'child') { // 添加子节点
         const addChild = (nodes: TreeNode[]): TreeNode[] => {
           return nodes.map(n => {
             if (n.id === node.id) {
@@ -508,13 +528,39 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
           console.log('🌲 树节点改变 - 右键添加子节点:', newNode, '父节点ID:', node.id, '当前树数据:', newTreeData);
           return newTreeData;
         });
-      } else if(dialogType === 'sibling'){
-        // 添加同级节点
+      } else if(dialogType === 'sibling'){ // 添加同级节点
         const addSibling = (nodes: TreeNode[]): TreeNode[] => {
           // 找到父节点并添加同级节点
           for (let i = 0; i < nodes.length; i++) {
-            if (nodes[i].id === node.id) {
-              // 在当前节点后插入同级节点
+            if (nodes[i].id === node.id) { // 在当前节点后插入同级节点
+              newNode.sort = Number(nodes[i].sort) + 0.0001;
+              console.log('🌲 树节点改变 - 添加同级节点:', newNode, '参考节点：', node);
+              if (!node.parent_id) {
+                // fetchAddFolderNode({})
+              }
+              // fetchAddTreeNode(newNode).then(res => {
+              //   console.log('🌲 树节点改变 - 接口返回:', res);
+              //   if (res?.code === 200) {
+              //     setSnackbar({
+              //       open: true,
+              //       message: res?.message,
+              //       severity: 'success'
+              //     });
+              //   } else {
+              //     setSnackbar({
+              //       open: true,
+              //       message: res?.message || '接口返回失败',
+              //       severity: 'error'
+              //     });
+              //   }
+              // }).catch(err => {
+              //   console.error('🌲 树节点改变 - 接口调用失败:', err);
+              //   setSnackbar({
+              //     open: true,
+              //     message: err instanceof Error ? err.message : '接口调用失败',
+              //     severity: 'error'
+              //   });
+              // });
               const newNodes = [...nodes];
               newNodes.splice(i + 1, 0, newNode);
               return newNodes;
@@ -537,15 +583,14 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
           console.log('🌲 树节点改变 - 右键添加同级节点:', newNode, '参考节点ID:', node.id, '当前树数据:', newTreeData);
           return newTreeData;
         });
-      } else if(dialogType === 'rename'){
-        // 重命名节点
+      } else if(dialogType === 'rename'){ // 重命名节点
         const rename = (nodes: TreeNode[]): TreeNode[] => {
           // 找到父节点并添加同级节点
           for (let i = 0; i < nodes.length; i++) {
             if (nodes[i].id === node.id) {
               // 在当前节点后插入同级节点
               const newNodes = [...nodes];
-              newNodes.splice(i, 1, {...node, text: nodeName.trim()});
+              newNodes.splice(i, 1, {...node, text: newNode.text});
               return newNodes;
             }
             if (nodes[i].items) {
@@ -568,13 +613,13 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
         });
       }
       setDialogOpen(false);
-      setNodeName('');
+      setNodeName({ });
     };
 
     // 关闭弹窗
     const handleCloseDialog = () => {
       setDialogOpen(false);
-      setNodeName('');
+      setNodeName({ });
     };
 
     return (
@@ -644,14 +689,18 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
               ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
               : undefined}
         >
-          <MenuItem onClick={() => handleOpenDialog('child')}>
-            <AddIcon sx={{ mr: 1 }} />
-            添加子节点
-          </MenuItem>
-          <MenuItem onClick={() =>handleOpenDialog('sibling')}>
-            <AddIcon sx={{ mr: 1 }} />
-            添加同级节点
-          </MenuItem>
+          {isFolder && (
+            <MenuItem onClick={() => handleOpenDialog('child')}>
+              <AddIcon sx={{ mr: 1 }} />
+              添加子节点
+            </MenuItem>
+          )}
+          {isFolder && (
+            <MenuItem onClick={() =>handleOpenDialog('sibling')}>
+              <AddIcon sx={{ mr: 1 }} />
+              添加同级节点
+            </MenuItem>
+          )}
           <MenuItem onClick={() => handleOpenDialog('rename')}>
             <DriveFileRenameOutlineIcon sx={{ mr: 1 }} />
             重命名
@@ -671,21 +720,36 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
               type="text"
               fullWidth
               variant="outlined"
-              value={nodeName}
-              onChange={(e) => setNodeName(e.target.value)}
+              value={nodeName.title || ''}
+              onChange={(e) => setNodeName({...nodeName, title: e.target.value})}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   handleConfirmAddNode();
                 }
               }}
             />
+            {(!node.parent_id && dialogType === 'sibling' && node.) && (<TextField
+              autoFocus
+              margin="dense"
+              label="链接名"
+              type="text"
+              fullWidth
+              variant="outlined"
+              value={nodeName.link_txt || ''}
+              onChange={(e) => setNodeName({...nodeName, link_txt: e.target.value})}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleConfirmAddNode();
+                }
+              }}
+            />)}
           </DialogContent>
           <DialogActions>
             <Button onClick={handleCloseDialog}>取消</Button>
             <Button 
               onClick={handleConfirmAddNode} 
               variant="contained"
-              disabled={!nodeName.trim()}
+              disabled={!nodeName?.title && Boolean(node.parent_id ? !nodeName?.link_txt : nodeName.link_txt)}
             >
               确认
             </Button>

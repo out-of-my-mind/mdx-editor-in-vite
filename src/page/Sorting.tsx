@@ -42,7 +42,7 @@ const TreeRootDropZone: React.FC<{
       }}
     >
       {/* 树根放置区域 - 只覆盖空白区域 */}
-      <Box
+      {/* <Box
         ref={drop}
         sx={{
           position: 'absolute',
@@ -56,7 +56,7 @@ const TreeRootDropZone: React.FC<{
           transition: 'all 0.2s ease',
           zIndex: 0, // 较低层级，不干扰树节点
         }}
-      />
+      /> */}
       
       {/* 树组件 - 在放置区域之上 */}
       <Box sx={{ position: 'relative', zIndex: 1 }}>
@@ -131,9 +131,17 @@ const SortingReactDnd: React.FC = () => {
     });
   };
 
+  // 禁用右键菜单
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+  };
+
   return (
     <DndProvider backend={HTML5Backend}>
-      <Box sx={{ display: 'flex', height: 'calc(100vh - 76px)', padding: '16px', gap: '16px' }}>
+      <Box 
+        sx={{ display: 'flex', height: 'calc(100vh - 76px)', padding: '16px', gap: '16px' }} 
+        onContextMenu={handleContextMenu}
+      >
         {/* 左侧树区域 */}
         <Paper elevation={2} sx={{ width: '300px', padding: '16px', overflow: 'auto', display: 'flex', 'flex-direction': 'column' }}>
           <Typography variant="h6" sx={{ mb: 2 }}>
