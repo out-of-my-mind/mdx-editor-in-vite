@@ -113,6 +113,9 @@ const DataSourceDropZone = forwardRef<any, DataSourceComponentProps>(({ onDrop }
         const updatedDataSource = typeof newDataSource === 'function' ? newDataSource(prev) : newDataSource;
         return updatedDataSource;
       });
+    },
+    refreshDataSource: () => {
+      fetchDataSource();
     }
   }));
   // 处理从数据源移除项目

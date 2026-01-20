@@ -136,6 +136,16 @@ const SortingReactDnd: React.FC = () => {
     e.preventDefault();
   };
 
+  // 处理节点删除成功后的回调
+  const handleNodeRemoved = () => {
+    console.log('📦 数据源改变 - 左侧节点删除成功，刷新数据源');
+    // 调用数据源组件的方法来刷新数据
+    if (dataSourceRef.current) {
+      dataSourceRef.current.refreshDataSource();
+      console.log('📦 数据源已刷新');
+    }
+  };
+
   return (
     <DndProvider backend={HTML5Backend}>
       <Box 
@@ -151,6 +161,7 @@ const SortingReactDnd: React.FC = () => {
             <TreeViewComponentReactDnd 
               ref={treeViewRef} 
               onDropFromDataSource={handleDropToTreeNode}
+              onNodeRemoved={handleNodeRemoved}
             />
           </TreeRootDropZone>
         </Paper>

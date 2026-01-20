@@ -11,10 +11,11 @@ from contextlib import contextmanager
 
 # 192.168.18.20
 # 172.17.0.1
+# 127.0.0.1
 config = {
     'user': 'note',
     'password': 'noteDB',
-    'host': '192.168.18.20',
+    'host': '127.0.0.1',
     "port": 3306,
     'database': 'note_db',
     'charset':'utf8mb4',
@@ -77,8 +78,8 @@ class NoteTree(BaseModel):
     id: str = None
     folderId: str = None
     text: str
-    parent_id: str = None
-    noteId: str = None
+    parent_id: str | None = None
+    noteId: str | None = None
     sort: float
 
 class NoteFolder(BaseModel):
@@ -194,7 +195,7 @@ def add_tree_note(info: NoteTree):
             info.folderId,
             info.text,
             info.parent_id,
-            info.id,
+            info.noteId,
             info.sort
         )
         cursor.execute(query, params)

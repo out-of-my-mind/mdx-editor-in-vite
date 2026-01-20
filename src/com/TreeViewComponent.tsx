@@ -9,28 +9,32 @@ import AddIcon from '@mui/icons-material/Add';
 import DriveFileRenameOutlineIcon from '@mui/icons-material/DriveFileRenameOutline';
 import { useDrag, useDrop } from 'react-dnd';
 import AlertMessage from './AlertMessage';
+import { generateUniqueId, removeTreeNode, addChildNode, addSiblingNode, renameTreeNode, calculateSortValue, insertBeforeNode, insertAfterNode } from '../utils/treeUtils';
 import '../styles/TreeView.css';
 
 interface TreeViewComponentProps {
   // onRemoveNode?: (nodeId: string) => void;
   onDropFromDataSource?: (item: any) => void;
+  onNodeRemoved?: () => void;
 }
 // 定义书签树节点的数据结构
-interface TreeNode {
+export interface TreeNode {
   id: string;
+  isTop?: boolean;
   text: string;
   items?: TreeNode[];
   link?: string;
   collapsed?: string;
   link_txt?: string;
   folderId: string;
+  noteId?: string;
   parent_id?: string;
   sort: number;
 }
-interface TreeFolder {
+export interface TreeFolder {
   id: string;
   title: string;
-  link_txt?: string;
+  linkTxt?: string;
 }
 // 定义接口返回数据结构
 interface ApiResponse {
@@ -38,12 +42,9 @@ interface ApiResponse {
   data: Record<string, TreeNode[]>;
   message: string;
 }
-// 生成唯一ID
-const generateUniqueId = () => {
-  return `new-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-};
+
 // 定义组件内部状态
-const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onDropFromDataSource }, ref) => {
+const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onDropFromDataSource, onNodeRemoved }, ref) => {
   const [treeData, setTreeData] = useState<TreeNode[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,8 +81,8 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
         };
         
         Object.values(result.data).forEach(nodeArray => {
+          nodeArray[0].isTop = true
           allNodes.push(...nodeArray);
-          console.log('收集到的节点:', nodeArray);
           collectExpanded(nodeArray);
         });
         
@@ -153,31 +154,45 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
       setLoading(false);
     }
   };
+  const fetchRenameNode = async (note: TreeFolder) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}/notes/add_tree_folder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(note)
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const result: ApiResponse = await response.json();
+      return result;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '添加目录失败');
+    } finally {
+      setLoading(false);
+    }
+  };
   // 移除树节点
   const handleRemoveNode = useCallback((nodeId: string) => {
-    const removeNode = (nodes: TreeNode[]): TreeNode[] => {
-      return nodes
-        .filter(node => node.id !== nodeId)
-        .map(node => {
-          if (node.items) {
-            const newItems = removeNode(node.items);
-            if (newItems !== node.items) {
-              return { ...node, items: newItems };
-            }
-          }
-          return node;
-        });
-    };
     fetchRemoveTreeNode(nodeId).then(res => {
       if (res?.code === 200) {
+        // 接口返回成功后才更新树数据
+        const newTreeData = removeTreeNode(treeData, nodeId);
+        console.log('🌲 树节点改变 - 删除节点:', nodeId, '当前树数据:', newTreeData);
+        setTreeData(newTreeData);
+        
         setSnackbar({
           open: true,
           message: res?.message,
           severity: 'success'
         });
-        const newTreeData = removeNode(treeData);
-        console.log('🌲 树节点改变 - 删除节点:', nodeId, '当前树数据:', newTreeData);
-        setTreeData(newTreeData);
+        
+        // 通知父组件节点删除成功，刷新右侧数据源
+        if (onNodeRemoved) {
+          onNodeRemoved();
+        }
       } else {
         setSnackbar({
           open: true,
@@ -186,10 +201,12 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
         });
       }
     });
-  }, [treeData]);
+  }, [treeData, onNodeRemoved]);
   
+  type dialogmode = 'child' | 'sibling' | 'rename';
+  type dropPositionMode = 'top' | 'bottom' | 'child' | null;
   // 处理添加节点到树中
-  const handleAddNode = useCallback((item: any, dropnode: TreeNode, position: 'top' | 'bottom' | 'child' = 'child') => {
+  const handleAddNode = useCallback((item: any, dropnode: TreeNode, position: dropPositionMode = 'child') => {
     const newNode: TreeNode = {
       id: item.id || generateUniqueId(),
       text: item.text || '新节点',
@@ -200,179 +217,67 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
       sort: 0
     };
     console.log('🌲 树节点改变 - 开始添加节点:', item, '目标节点:', dropnode);
-    if (position === 'child' && dropnode) {
-      // 添加为子节点
-      const addToParent = (nodes: TreeNode[]): TreeNode[] => {
-        return nodes.map(node => {
-          if (node.id === dropnode.id) {
-            console.log('🌲 树节点改变 - 父节点:', node, 'folderId:', node.folderId);
-            if (node.items && node.items.length > 0) {
-              newNode.sort = node.items[node.items.length - 1].sort + 0.0001;
-              console.log('🌲 树节点改变 - 计算sort值（有子节点）:', newNode.sort, '参考:', node.items[node.items.length - 1].sort);
-            } else {
-              newNode.sort = node.sort + 0.0001;
-              console.log('🌲 树节点改变 - 计算sort值（无子节点）:', newNode.sort, '参考:', node.sort);
-            }
-            
-            console.log('🌲 树节点改变 - 准备调用接口添加节点:', newNode);
-            fetchAddTreeNode(newNode).then(res => {
-              console.log('🌲 树节点改变 - 接口返回:', res);
-              if (res?.code === 200) {
-                setSnackbar({
-                  open: true,
-                  message: res?.message,
-                  severity: 'success'
-                });
-              } else {
-                setSnackbar({
-                  open: true,
-                  message: res?.message || '接口返回失败',
-                  severity: 'error'
-                });
-              }
-            }).catch(err => {
-              console.error('🌲 树节点改变 - 接口调用失败:', err);
-              setSnackbar({
-                open: true,
-                message: err instanceof Error ? err.message : '接口调用失败',
-                severity: 'error'
-              });
-            });
-            
-            return {
-              ...node,
-              items: [...(node.items || []), newNode]
-            };
+    
+    // 计算排序值
+    if (position === 'child') {
+      newNode.sort = calculateSortValue(dropnode);
+    } else if (position === 'top') {
+      newNode.sort = dropnode.sort - 0.0001;
+    } else if (position === 'bottom') {
+      newNode.sort = dropnode.sort + 0.0001;
+    }
+    // 调用接口添加节点
+    fetchAddTreeNode(newNode).then(res => {
+      console.log('🌲 树节点改变 - 接口返回:', res);
+      if (res?.code === 200) {
+        // 接口返回成功后才更新树数据
+        setTreeData(prev => {
+          let newTreeData: TreeNode[];
+          if (position === 'child') {
+            newTreeData = addChildNode(prev, dropnode.id, newNode);
+            console.log('🌲 树节点改变 - 添加子节点完成:', newNode, '父节点ID:', dropnode.id, '当前树数据:', newTreeData);
+          } else if (position === 'top') {
+            newTreeData = insertBeforeNode(prev, dropnode.id, newNode);
+            console.log('🌲 树节点改变 - 插入到上方:', newNode, '参考节点:', dropnode, '当前树数据:', newTreeData);
+          } else if (position === 'bottom') {
+            newTreeData = insertAfterNode(prev, dropnode.id, newNode);
+            console.log('🌲 树节点改变 - 插入到下方:', newNode, '参考节点:', dropnode, '当前树数据:', newTreeData);
+          } else {
+            newTreeData = prev;
           }
-          if (node.items) {
-            return {
-              ...node,
-              items: addToParent(node.items)
-            };
-          }
-          return node;
+          return newTreeData;
         });
-      };
-      setTreeData(prev => {
-        const newTreeData = addToParent(prev);
-        console.log('🌲 树节点改变 - 添加子节点完成:', newNode, '父节点ID:', dropnode.id, '当前树数据:', newTreeData);
-        return newTreeData;
-      });
-    } else if (position === 'top' && dropnode) {
-      // 插入到目标节点上方
-      const insertBefore = (nodes: TreeNode[]): TreeNode[] => {
-        for (let i = 0; i < nodes.length; i++) {
-          if (nodes[i].id === dropnode.id) {
-            newNode.sort = nodes[i].sort - 0.0001;
-            fetchAddTreeNode(newNode).then(res => {
-              console.log('🌲 树节点改变 - 接口返回:', res);
-              if (res?.code === 200) {
-                setSnackbar({
-                  open: true,
-                  message: res?.message,
-                  severity: 'success'
-                });
-              } else {
-                setSnackbar({
-                  open: true,
-                  message: res?.message || '接口返回失败',
-                  severity: 'error'
-                });
-              }
-            }).catch(err => {
-              console.error('🌲 树节点改变 - 接口调用失败:', err);
-              setSnackbar({
-                open: true,
-                message: err instanceof Error ? err.message : '接口调用失败',
-                severity: 'error'
-              });
-            });
-            const newNodes = [...nodes];
-            newNodes.splice(i, 0, newNode);
-            return newNodes;
-          }
-          if (nodes[i].items) {
-            const newItems = insertBefore(nodes[i].items!);
-            if (newItems !== nodes[i].items) {
-              return [
-                ...nodes.slice(0, i),
-                { ...nodes[i], items: newItems },
-                ...nodes.slice(i + 1)
-              ];
-            }
-          }
+        setSnackbar({
+          open: true,
+          message: res?.message,
+          severity: 'success'
+        });
+        // 通知父组件数据源项目已被使用
+        if (onDropFromDataSource) {
+          onDropFromDataSource(item);
         }
-        return nodes;
-      };
-      setTreeData(prev => {
-        const newTreeData = insertBefore(prev);
-        console.log('🌲 树节点改变 - 插入到上方:', newNode, '参考节点:', dropnode, '当前树数据:', newTreeData);
-        return newTreeData;
+      } else {
+        setSnackbar({
+          open: true,
+          message: res?.message || '接口返回失败',
+          severity: 'error'
+        });
+      }
+    }).catch(err => {
+      console.error('🌲 树节点改变 - 接口调用失败:', err);
+      setSnackbar({
+        open: true,
+        message: err instanceof Error ? err.message : '接口调用失败',
+        severity: 'error'
       });
-    } else if (position === 'bottom' && dropnode) {
-      // 插入到目标节点下方
-      const insertAfter = (nodes: TreeNode[]): TreeNode[] => {
-        for (let i = 0; i < nodes.length; i++) {
-          if (nodes[i].id === dropnode.id) {
-            newNode.sort = nodes[i].sort + 0.0001;
-            fetchAddTreeNode(newNode).then(res => {
-              console.log('🌲 树节点改变 - 接口返回:', res);
-              if (res?.code === 200) {
-                setSnackbar({
-                  open: true,
-                  message: res?.message,
-                  severity: 'success'
-                });
-              } else {
-                setSnackbar({
-                  open: true,
-                  message: res?.message || '接口返回失败',
-                  severity: 'error'
-                });
-              }
-            }).catch(err => {
-              console.error('🌲 树节点改变 - 接口调用失败:', err);
-              setSnackbar({
-                open: true,
-                message: err instanceof Error ? err.message : '接口调用失败',
-                severity: 'error'
-              });
-            });
-            const newNodes = [...nodes];
-            newNodes.splice(i + 1, 0, newNode);
-            return newNodes;
-          }
-          if (nodes[i].items) {
-            const newItems = insertAfter(nodes[i].items!);
-            if (newItems !== nodes[i].items) {
-              return [
-                ...nodes.slice(0, i),
-                { ...nodes[i], items: newItems },
-                ...nodes.slice(i + 1)
-              ];
-            }
-          }
-        }
-        return nodes;
-      };
-      setTreeData(prev => {
-        const newTreeData = insertAfter(prev);
-        console.log('🌲 树节点改变 - 插入到下方:', newNode, '参考节点:', dropnode, '当前树数据:', newTreeData);
-        return newTreeData;
-      });
-    }
-    // 通知父组件数据源项目已被使用
-    if (onDropFromDataSource) {
-      onDropFromDataSource(item);
-    }
-  }, [onDropFromDataSource]);
+    });
+  }, [onDropFromDataSource, treeData]);
 
   useImperativeHandle(ref, () => ({
     handleRemoveNode,
     handleAddNode
   }));
-  type dialogmode = 'child' | 'sibling' | 'rename';
-  type dropPositionMode = 'top' | 'bottom' | 'child' | null;
+
   // 可拖拽和可放置的树节点组件
   const DraggableTreeItem: React.FC<{ node: TreeNode; onDrop: (item: any, dropnode: TreeNode, position: dropPositionMode) => void }> = ({ node, onDrop }) => {
     const isFolder = !!node.items;
@@ -477,23 +382,48 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
           : null,
       );
     };
-
     // 关闭右键菜单
     const handleClose = () => {
       setContextMenu(null);
     };
 
+    // 处理删除节点
+    const handleRemoveNode = () => {
+      fetchRemoveTreeNode(node.id).then(res => {
+        console.log('🌲 树节点改变 - 接口返回:', res);
+        if (res?.code === 200) {
+          setSnackbar({
+            open: true,
+            message: res?.message,
+            severity: 'success'
+          });
+        } else {
+          setSnackbar({
+            open: true,
+            message: res?.message || '接口返回失败',
+            severity: 'error'
+          });
+        }
+      }).catch(err => {
+        console.error('🌲 树节点改变 - 接口调用失败:', err);
+        setSnackbar({
+          open: true,
+          message: err instanceof Error ? err.message : '接口调用失败',
+          severity: 'error'
+        });
+      });
+    }
     // 打开弹窗
     const handleOpenDialog = (type: dialogmode) => {
       setDialogType(type);
       console.log('打开弹窗，点击节点', node)
-      setNodeName(type === 'rename' ? { title: node.text} : {  });
+      setNodeName(type === 'rename' ? { title: node.text, link_txt: node.link || '' } : {  });
       setDialogOpen(true);
       handleClose();
     };
     // 确认节点
     const handleConfirmAddNode = () => {
-      if (!nodeName.title || !nodeName.title.trim()) {
+      if (!nodeName.title || !nodeName.title.trim() || (node.isTop && (!nodeName.link_txt || !nodeName.link_txt.trim()))) {
         return;
       }
       const newNode: TreeNode = {
@@ -504,6 +434,11 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
         folderId: node.folderId,
         parent_id: node.parent_id,
         sort: 0
+      };
+      const newFolder: TreeFolder = {
+        id: generateUniqueId(),
+        title: nodeName.title.trim(),
+        linkTxt: nodeName.link_txt || undefined,
       };
       if (dialogType === 'child') { // 添加子节点
         const addChild = (nodes: TreeNode[]): TreeNode[] => {
@@ -530,39 +465,61 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
         });
       } else if(dialogType === 'sibling'){ // 添加同级节点
         const addSibling = (nodes: TreeNode[]): TreeNode[] => {
-          // 找到父节点并添加同级节点
           for (let i = 0; i < nodes.length; i++) {
             if (nodes[i].id === node.id) { // 在当前节点后插入同级节点
+              const newNodes = [...nodes];
               newNode.sort = Number(nodes[i].sort) + 0.0001;
               console.log('🌲 树节点改变 - 添加同级节点:', newNode, '参考节点：', node);
-              if (!node.parent_id) {
-                // fetchAddFolderNode({})
+              if (node.isTop) { // 添加根目录
+                console.log('添加根目录');
+                fetchAddFolderNode(newFolder).then(res => {
+                  if (res?.code === 200) {
+                    newNodes.splice(i + 1, 0, newNode);
+                    setSnackbar({
+                      open: true,
+                      message: res?.message,
+                      severity: 'success'
+                    });
+                  } else {
+                    setSnackbar({
+                      open: true,
+                      message: res?.message || '接口返回失败',
+                      severity: 'error'
+                    });
+                  }
+                }).catch(err => {
+                  console.error('🌲 树节点改变 - 接口调用失败:', err);
+                  setSnackbar({
+                    open: true,
+                    message: err instanceof Error ? err.message : '接口调用失败',
+                    severity: 'error'
+                  });
+                });
+              } else {
+                fetchAddTreeNode(newNode).then(res => {
+                  if (res?.code === 200) {
+                    newNodes.splice(i + 1, 0, newNode);
+                    setSnackbar({
+                      open: true,
+                      message: res?.message,
+                      severity: 'success'
+                    });
+                  } else {
+                    setSnackbar({
+                      open: true,
+                      message: res?.message || '接口返回失败',
+                      severity: 'error'
+                    });
+                  }
+                }).catch(err => {
+                  console.error('🌲 树节点改变 - 接口调用失败:', err);
+                  setSnackbar({
+                    open: true,
+                    message: err instanceof Error ? err.message : '接口调用失败',
+                    severity: 'error'
+                  });
+                });
               }
-              // fetchAddTreeNode(newNode).then(res => {
-              //   console.log('🌲 树节点改变 - 接口返回:', res);
-              //   if (res?.code === 200) {
-              //     setSnackbar({
-              //       open: true,
-              //       message: res?.message,
-              //       severity: 'success'
-              //     });
-              //   } else {
-              //     setSnackbar({
-              //       open: true,
-              //       message: res?.message || '接口返回失败',
-              //       severity: 'error'
-              //     });
-              //   }
-              // }).catch(err => {
-              //   console.error('🌲 树节点改变 - 接口调用失败:', err);
-              //   setSnackbar({
-              //     open: true,
-              //     message: err instanceof Error ? err.message : '接口调用失败',
-              //     severity: 'error'
-              //   });
-              // });
-              const newNodes = [...nodes];
-              newNodes.splice(i + 1, 0, newNode);
               return newNodes;
             }
             if (nodes[i].items) {
@@ -584,30 +541,8 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
           return newTreeData;
         });
       } else if(dialogType === 'rename'){ // 重命名节点
-        const rename = (nodes: TreeNode[]): TreeNode[] => {
-          // 找到父节点并添加同级节点
-          for (let i = 0; i < nodes.length; i++) {
-            if (nodes[i].id === node.id) {
-              // 在当前节点后插入同级节点
-              const newNodes = [...nodes];
-              newNodes.splice(i, 1, {...node, text: newNode.text});
-              return newNodes;
-            }
-            if (nodes[i].items) {
-              const newItems = rename(nodes[i].items!);
-              if (newItems !== nodes[i].items) {
-                return [
-                  ...nodes.slice(0, i),
-                  { ...nodes[i], items: newItems },
-                  ...nodes.slice(i + 1)
-                ];
-              }
-            }
-          }
-          return nodes;
-        };
         setTreeData(prev => {
-          const newTreeData = rename(prev);
+          const newTreeData = renameTreeNode(prev, node.id, newNode.text);
           console.log('🌲 树节点改变 - 右键添加同级节点:', newNode, '参考节点ID:', node.id, '当前树数据:', newTreeData);
           return newTreeData;
         });
@@ -705,6 +640,10 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
             <DriveFileRenameOutlineIcon sx={{ mr: 1 }} />
             重命名
           </MenuItem>
+          <MenuItem onClick={() => handleRemoveNode()}>
+            <DriveFileRenameOutlineIcon sx={{ mr: 1 }} />
+            删除
+          </MenuItem>
         </Menu>
         
         {/* 节点名称输入弹窗 */}
@@ -728,7 +667,7 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
                 }
               }}
             />
-            {(!node.parent_id && dialogType === 'sibling' && node.) && (<TextField
+            {((dialogType === 'sibling' || dialogType === 'rename') && node.isTop) && (<TextField
               autoFocus
               margin="dense"
               label="链接名"
