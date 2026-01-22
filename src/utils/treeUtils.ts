@@ -180,12 +180,12 @@ export const renameTreeNode = (
   });
 };
 
-// 计算新节点的排序值
+// 计算子级新节点的排序值
 export const calculateSortValue = (
   referenceNode: TreeNode
 ): number => {
   if (referenceNode.items && referenceNode.items.length > 0) {
-    return referenceNode.items[referenceNode.items.length - 1].sort + 0.0001;
+    return referenceNode.items[referenceNode.items.length - 1].sort + 0.001;
   }
-  return referenceNode.sort + 0.0001;
+  return 1 + 0.001;
 };

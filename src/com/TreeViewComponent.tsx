@@ -213,23 +213,29 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
   // 处理添加节点到树中
   const handleAddNode = useCallback((item: any, dropnode: TreeNode, position: dropPositionMode = 'child') => {
     const newNode: TreeNode = {
-      id: item.id || generateUniqueId(),
+      id: generateUniqueId(),
       text: item.text || '新节点',
       link: item.link || undefined,
       items: item.items ? [...item.items] : undefined,
       folderId: dropnode.folderId,
       parent_id: dropnode.parent_id,
+      noteId: item.id,
       sort: 0
     };
     console.log('🌲 树节点改变 - 开始添加节点:', item, '目标节点:', dropnode);
     
     // 计算排序值
     if (position === 'child') {
+      if (dropnode.isTop) {
+        newNode.parent_id = undefined;
+      } else {
+        newNode.parent_id = dropnode.id;
+      }
       newNode.sort = calculateSortValue(dropnode);
     } else if (position === 'top') {
-      newNode.sort = dropnode.sort - 0.0001;
+      newNode.sort = dropnode.sort - 0.001;
     } else if (position === 'bottom') {
-      newNode.sort = dropnode.sort + 0.0001;
+      newNode.sort = dropnode.sort + 0.001;
     }
     // 调用接口添加节点
     fetchAddTreeNode(newNode).then(res => {

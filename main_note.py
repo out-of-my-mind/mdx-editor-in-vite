@@ -85,7 +85,7 @@ class NoteTree(BaseModel):
 class NoteFolder(BaseModel):
     id: str = None
     title: str
-    parent_id: str = None
+    parent_id: str | None = None
     linkTxt: str
 
 
@@ -208,7 +208,7 @@ def add_tree_note(info: NoteTree):
 
 
 @app.post('/notes/add_tree_folder')
-def add_tree_note(info: NoteFolder):
+def add_tree_folder(info: NoteFolder):
     with get_db_cursor() as cursor:
         query = """
                 INSERT INTO note_folder 
@@ -229,6 +229,42 @@ def add_tree_note(info: NoteFolder):
             "message": "保存成功"
         }
 
+
+@app.post('/notes/rename_tree_node')
+def rename_tree_note(nodeId: str, name: str):
+    with get_db_cursor() as cursor:
+        query = """
+            UPDATE note_tree SET node_txt=%s WHERE id=%s
+        """
+        params = (
+            name,
+            nodeId
+        )
+        cursor.execute(query, params)
+        return {
+            "code": 200,
+            "data": None,
+            "message": "修改成功"
+        }
+
+
+@app.post('/notes/rename_tree_folder')
+def rename_tree_folder(info: NoteFolder):
+    with get_db_cursor() as cursor:
+        query = """
+            UPDATE note_folder SET title=%s, link_txt=%s WHERE id=%s
+        """
+        params = (
+            info.title,
+            info.linkTxt,
+            info.id
+        )
+        cursor.execute(query, params)
+        return {
+            "code": 200,
+            "data": None,
+            "message": "修改成功"
+        }
 
 # 删除树节点  也可能是删除根文件夹
 @app.get('/notes/remove_tree_node')

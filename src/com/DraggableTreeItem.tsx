@@ -7,7 +7,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DriveFileRenameOutlineIcon from '@mui/icons-material/DriveFileRenameOutline';
 import { useDrag, useDrop } from 'react-dnd';
 import { TreeNode, TreeFolder } from './TreeViewComponent';
-import { generateUniqueId, renameTreeNode } from '../utils/treeUtils';
+import { generateUniqueId, calculateSortValue, renameTreeNode } from '../utils/treeUtils';
 
 // 定义组件接口
 interface DraggableTreeItemProps {
@@ -190,6 +190,22 @@ const DraggableTreeItem: React.FC<DraggableTreeItemProps> = ({
       const addChild = (nodes: TreeNode[]): TreeNode[] => {
         return nodes.map(n => {
           if (n.id === node.id) {
+            if (n.isTop) {
+              newNode.parent_id = undefined;
+            } else {
+              newNode.parent_id = n.id;
+            }
+            newNode.sort = calculateSortValue(n);
+            fetchAddTreeNode(newNode).then(res => {
+              if (res?.code === 200) {
+                setSnackbar({ open: true, message: res?.message, severity: 'success' });
+              } else {
+                setSnackbar({ open: true, message: res?.message || '接口返回失败', severity: 'error' });
+              }
+            }).catch(err => {
+              console.error('🌲 树节点改变 - 接口调用失败:', err);
+              setSnackbar({ open: true, message: err instanceof Error ? err.message : '接口调用失败', severity: 'error' });
+            });
             return {
               ...n,
               items: [...(n.items || []), newNode]
@@ -214,8 +230,7 @@ const DraggableTreeItem: React.FC<DraggableTreeItemProps> = ({
         for (let i = 0; i < nodes.length; i++) {
           if (nodes[i].id === node.id) { // 在当前节点后插入同级节点
             const newNodes = [...nodes];
-            newNode.sort = Number(nodes[i].sort) + 0.0001;
-            console.log('🌲 树节点改变 - 添加同级节点:', newNode, '参考节点：', node);
+            newNode.sort = Number(nodes[i].sort) + 0.001;
             if (node.isTop) { // 添加根目录
               console.log('添加根目录');
               fetchAddFolderNode(newFolder).then(res => {
