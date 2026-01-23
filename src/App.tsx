@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import DrawerCom from "./com/Drawer";
 import Note from "./page/Note";
 import Sorting from "./page/Sorting";
+import View from "./page/View";
 
 // 创建主题配置
 const theme = createTheme({
@@ -51,9 +52,8 @@ function App() {
             
             {/* 查看页面 */}
             <Route path="/view" element={
-              <div style={{ padding: '20px' }}>
-                <h2>查看页面</h2>
-                <p>这里是查看功能的内容区域。</p>
+              <div>
+                <View />
               </div>
             } />
             

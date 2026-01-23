@@ -4,7 +4,7 @@ import { Paper, Box, AlertProps } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 
-import DraggableTreeItem, { dropPositionMode } from './DraggableTreeItem';
+import DraggableTreeItem, { dropPositionMode } from './TreeItemDraggable';
 import AlertMessage from './AlertMessage';
 import { generateUniqueId, removeTreeNode, addChildNode, calculateSortValue, insertBeforeNode, insertAfterNode } from '../utils/treeUtils';
 import '../styles/TreeView.css';
