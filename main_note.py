@@ -230,7 +230,7 @@ def add_tree_folder(info: NoteFolder):
         }
 
 
-@app.post('/notes/rename_tree_node')
+@app.get('/notes/rename_tree_node')
 def rename_tree_note(nodeId: str, name: str):
     with get_db_cursor() as cursor:
         query = """
@@ -350,6 +350,25 @@ async def getVitePressSidebar():
         results = cursor.fetchall()
         # 转化成树结构
         data = build_nested_structure(results)
+
+        query_other = "SELECT * FROM note_folder where id not IN(SELECT folder_id FROM note_tree)"
+        cursor.execute(query_other)
+        results_other = cursor.fetchall()
+        for item in results_other:
+            link_txt = item['link_txt']
+            top_entry = {
+                'id': item['id'],
+                'sort': len(data),
+                'text': item['title'],
+                'items': [],
+                'link_txt': link_txt,
+                'folderId': item['id'],
+                'parent_id': None
+            }
+            # 添加到结果
+            data[f'/{link_txt}/'] = []
+            data[f'/{link_txt}/'].append(top_entry)
+
         return {"code": 200, "data": data, "message": "success"}
 
         data = {
@@ -514,13 +533,13 @@ def build_nested_structure(results):
             if items_list:
                 # 创建顶级条目
                 top_entry = {
-                    'id': top_nodes[0]['id'] + '-0',
-                    'sort': top_nodes[0]['id'],
+                    'id': top_nodes[0]['folderId'],
+                    'sort': len(result),
                     'text': top_nodes[0]['text'] if top_nodes else link_txt + '手册',
                     'items': items_list,
                     'link_txt': top_nodes[0]['link_txt'],
                     'folderId': top_nodes[0]['folderId'],
-                    'parent_id': top_nodes[0]['parent_id']
+                    'parent_id': None
                 }
                 # id: string;
                 # label: string;

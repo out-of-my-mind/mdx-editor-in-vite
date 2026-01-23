@@ -163,7 +163,7 @@ const DraggableTreeItem: React.FC<DraggableTreeItemProps> = ({
   const handleOpenDialog = (type: dialogmode) => {
     setDialogType(type);
     console.log('打开弹窗，点击节点', node)
-    setNodeName(type === 'rename' ? { title: node.text, link_txt: node.link || '' } : {  });
+    setNodeName(type === 'rename' ? { title: node.text, link_txt: node.link_txt || '' } : {  });
     setDialogOpen(true);
     handleClose();
   };
