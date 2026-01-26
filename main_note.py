@@ -181,6 +181,27 @@ def add_note(info: NoteInfo):
             "message": "保存成功"
         }
 
+@app.post('/notes/edit')
+def edit_note(info: NoteInfo):
+    with get_db_cursor() as cursor:
+        query = """
+                UPDATE note_info SET title=%s, content=%s, tags=%s WHERE id=%s
+                """
+        params = (
+            info.title,
+            info.content,
+            info.tags,
+            info.id
+        )
+
+        cursor.execute(query, params)
+
+        return {
+            "code": 200,
+            "data": None,
+            "message": "保存成功"
+        }
+
 
 @app.post('/notes/add_tree_node')
 def add_tree_note(info: NoteTree):
@@ -268,11 +289,9 @@ def rename_tree_folder(info: NoteFolder):
 
 # 删除树节点  也可能是删除根文件夹
 @app.get('/notes/remove_tree_node')
-def remove_tree_note(id: str):
+def remove_tree_note(id: str, isfolder: bool):
     with get_db_cursor() as cursor:
-        query = """
-                DELETE FROM note_tree WHERE id=%s 
-                """
+        query = "DELETE FROM note_folder WHERE id=%s" if isfolder else "DELETE FROM note_tree WHERE id=%s"
         # query = """
         #         DELETE FROM note_folder WHERE id=%s
         #         """
@@ -429,7 +448,7 @@ def build_nested_structure(results):
             'folderId': str(item.get('folder_id', '')),
             'node_txt': node_txt,
             'parent_id': item.get('parent_id'),
-            'note_id': item.get('note_id'),
+            'noteId': item.get('note_id'),
             'text': item.get('title'),
             'link_txt': item.get('link_txt'),
             # 添加排序字段 - 可以根据需要调整排序逻辑
@@ -489,12 +508,13 @@ def build_nested_structure(results):
                         'text': top_node['node_txt'],
                         'link_txt': top_node['link_txt'],
                         'folderId': top_node['folderId'],
-                        'parent_id': top_node['parent_id']
+                        'parent_id': top_node['parent_id'],
+                        'noteId': top_node['noteId']
                     }
 
                     # 如果 note_id 存在，添加 link
-                    if top_node['note_id'] not in [None, '', 'None']:
-                        node_dict['link'] = f"/{link_txt}/{top_node['note_id']}"
+                    if top_node['noteId'] not in [None, '', 'None']:
+                        node_dict['link'] = f"/{link_txt}/{top_node['noteId']}"
 
                     # 添加 collapsed 属性
                     node_dict['collapsed'] = 'false'
@@ -508,10 +528,11 @@ def build_nested_structure(results):
                             'text': child['node_txt'],
                             'link_txt': child['link_txt'],
                             'folderId': child['folderId'],
-                            'parent_id': child['parent_id']
+                            'parent_id': child['parent_id'],
+                            'noteId': child['noteId']
                         }
-                        if child['note_id'] not in [None, '', 'None']:
-                            child_dict['link'] = f"/{link_txt}/{child['note_id']}"
+                        if child['noteId'] not in [None, '', 'None']:
+                            child_dict['link'] = f"/{link_txt}/{child['noteId']}"
                         node_dict['items'].append(child_dict)
 
                     items_list.append(node_dict)
@@ -523,10 +544,11 @@ def build_nested_structure(results):
                         'text': top_node['node_txt'],
                         'link_txt': top_node['link_txt'],
                         'folderId': top_node['folderId'],
-                        'parent_id': top_node['parent_id']
+                        'parent_id': top_node['parent_id'],
+                        'noteId': top_node['noteId']
                     }
-                    if top_node['note_id'] not in [None, '', 'None']:
-                        node_dict['link'] = f"/{link_txt}/{top_node['note_id']}"
+                    if top_node['noteId'] not in [None, '', 'None']:
+                        node_dict['link'] = f"/{link_txt}/{top_node['noteId']}"
                     items_list.append(node_dict)
 
             # 添加到结果中

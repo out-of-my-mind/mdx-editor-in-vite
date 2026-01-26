@@ -101,7 +101,7 @@ const SortingReactDnd: React.FC = () => {
     });
     // 可选：从树中移除节点
     if (treeViewRef.current && node.id) {
-      treeViewRef.current.handleRemoveNode(node.id);
+      treeViewRef.current.handleDragRemoveNode(node.id);
     }
   };
 

@@ -15,7 +15,7 @@ interface DraggableTreeItemProps {
   onDrop: (item: any, dropnode: TreeNode, position: dropPositionMode) => void;
   setTreeData: React.Dispatch<React.SetStateAction<TreeNode[]>>;
   setSnackbar: (snackbar: { open: boolean; message: string; severity: 'success' | 'error' }) => void;
-  fetchRemoveTreeNode: (id: string) => Promise<any>;
+  fetchRemoveTreeNode: (note: TreeNode) => Promise<any>;
   fetchAddFolderNode: (note: TreeFolder) => Promise<any>;
   fetchAddTreeNode: (note: TreeNode) => Promise<any>;
   fetchRenameFolder: (note: TreeFolder) => Promise<any>;
@@ -38,7 +38,7 @@ const DraggableTreeItem: React.FC<DraggableTreeItemProps> = ({
   fetchRenameFolder,
   fetchRenameNode
 }) => {
-  const isFolder = !!node.items;
+  const isFolder = !node.noteId;
   // 右键菜单状态
   const [contextMenu, setContextMenu] = useState<{
     mouseX: number;
@@ -57,10 +57,14 @@ const DraggableTreeItem: React.FC<DraggableTreeItemProps> = ({
       source: 'tree',
       nodeId: node.id 
     },
+    canDrag: () => {
+      // 文件夹节点不能拖拽
+      return !isFolder;
+    },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
-  }), [node]);
+  }), [node, isFolder]);
 
   // 拖拽位置状态
   const [dropPosition, setDropPosition] = useState<dropPositionMode>(null);
@@ -147,7 +151,7 @@ const DraggableTreeItem: React.FC<DraggableTreeItemProps> = ({
 
   // 处理删除节点
   const handleRemoveNode = () => {
-    fetchRemoveTreeNode(node.id).then(res => {
+    fetchRemoveTreeNode(node).then(res => {
       console.log('🌲 树节点改变 - 接口返回:', res);
       if (res?.code === 200) {
         setSnackbar({ open: true, message: res?.message, severity: 'success' });

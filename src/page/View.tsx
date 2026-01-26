@@ -1,11 +1,19 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Box, Paper, Typography } from '@mui/material';
 import TreeViewComponentNoDrag from '../com/TreeViewComponentNoDrag';
+import { TreeNode } from '../com/TreeViewComponent';
 import Note from "./Note";
 
 // 主组件
 const View: React.FC = () => {
   const treeViewRef = useRef<any>(null);
+  const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
+
+  // 处理节点点击事件
+  const handleNodeClick = (node: TreeNode) => {
+    console.log('View页面 - 节点被点击:', node);
+    setSelectedNode(node);
+  };
 
   // 禁用右键菜单
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -24,12 +32,13 @@ const View: React.FC = () => {
         </Typography>
         <TreeViewComponentNoDrag 
               ref={treeViewRef} 
+              onNodeClick={handleNodeClick}
             />
       </Paper>
 
       {/* 右侧记录页面区域 */}
       <Paper elevation={2} sx={{ flex: 1, padding: '16px', overflow: 'auto' }}>
-        <Note />
+        <Note nodeId={selectedNode?.noteId} />
       </Paper>
     </Box>
   );

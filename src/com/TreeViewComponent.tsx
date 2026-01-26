@@ -93,11 +93,12 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
       setLoading(false);
     }
   };
-  const fetchRemoveTreeNode = async (id: string) => {
+  const fetchRemoveTreeNode = async (note: TreeNode) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}/notes/remove_tree_node?id=${id}`);
+      const apiUrl = note.noteId? `?id=${note.id}&isfolder=false` : `?id=${note.folderId}&isfolder=true`
+      const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}/notes/remove_tree_node${apiUrl}`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -189,9 +190,9 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
       setLoading(false);
     }
   };
-  // 移除树节点
-  const handleRemoveNode = useCallback((nodeId: string) => {
-    fetchRemoveTreeNode(nodeId).then(res => {
+  // 拖拽移除树节点
+  const handleDragRemoveNode = useCallback((nodeId: string) => {
+    fetchRemoveTreeNode({id: nodeId, text: '', folderId: '', parent_id: '', sort: 0}).then(res => {
       if (res?.code === 200) {
         // 接口返回成功后才更新树数据
         const newTreeData = removeTreeNode(treeData, nodeId);
@@ -208,7 +209,6 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
       }
     });
   }, [treeData, onNodeRemoved]);
-  
   
   // 处理添加节点到树中
   const handleAddNode = useCallback((item: any, dropnode: TreeNode, position: dropPositionMode = 'child') => {
@@ -273,7 +273,7 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
   }, [onDropFromDataSource, treeData]);
 
   useImperativeHandle(ref, () => ({
-    handleRemoveNode,
+    handleDragRemoveNode,
     handleAddNode
   }));
 

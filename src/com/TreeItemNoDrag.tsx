@@ -8,17 +8,21 @@ import { TreeNode } from './TreeViewComponent';
 // 定义组件接口
 interface TreeItemNoDragProps {
   node: TreeNode;
+  onNodeClick?: (node: TreeNode) => void;
 }
 
 // 无拖拽功能的树节点组件
 const TreeItemNoDrag: React.FC<TreeItemNoDragProps> = ({
-  node
+  node,
+  onNodeClick
 }) => {
-  const isFolder = !!node.items;
-
+  const isFolder = !node.noteId;
   // 处理节点点击
   const handleNodeClick = () => {
     console.log('点击节点:', node);
+    if (onNodeClick) {
+      onNodeClick(node);
+    }
   };
 
   return (
@@ -55,6 +59,7 @@ const TreeItemNoDrag: React.FC<TreeItemNoDragProps> = ({
           <TreeItemNoDrag
             key={childNode.id}
             node={childNode}
+            onNodeClick={onNodeClick}
           />
         ))}
       </TreeItem>

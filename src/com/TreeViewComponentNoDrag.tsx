@@ -8,7 +8,7 @@ import TreeItemNoDrag from './TreeItemNoDrag';
 import '../styles/TreeView.css';
 
 interface TreeViewComponentProps {
-  // 查看页面树节点无操作功能
+  onNodeClick?: (node: TreeNode) => void;
 }
 
 // 定义书签树节点的数据结构
@@ -34,7 +34,7 @@ interface ApiResponse {
 }
 
 // 定义组件内部状态
-const TreeViewComponentNoDrag = forwardRef<any, TreeViewComponentProps>(({}, ref): React.ReactNode => {
+const TreeViewComponentNoDrag = forwardRef<any, TreeViewComponentProps>(({ onNodeClick }, ref): React.ReactNode => {
   const [treeData, setTreeData] = useState<TreeNode[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -114,6 +114,7 @@ const TreeViewComponentNoDrag = forwardRef<any, TreeViewComponentProps>(({}, ref
                 <TreeItemNoDrag 
                   key={node.id} 
                   node={node} 
+                  onNodeClick={onNodeClick}
                 />
               ))}
             </SimpleTreeView>
