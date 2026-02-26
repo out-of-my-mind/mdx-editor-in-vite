@@ -1,5 +1,5 @@
 import React, { useEffect, useImperativeHandle, useState, forwardRef } from 'react';
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
 import { useDrag, useDrop } from 'react-dnd';
 import '../styles/TreeView.css';
 
@@ -76,6 +76,11 @@ const DataSourceDropZone = forwardRef<any, DataSourceComponentProps>(({ onDrop }
   }), [onDrop]);
 
   const [dataSource, setDataSource] = useState<any[]>([]);
+  // 确认对话框状态
+  const [confirmDialog, setConfirmDialog] = useState({
+    open: false,
+    itemId: ''
+  });
 
   // 从接口获取树数据的函数
   const fetchDataSource = async () => {
@@ -120,69 +125,121 @@ const DataSourceDropZone = forwardRef<any, DataSourceComponentProps>(({ onDrop }
   }));
   // 处理从数据源移除项目
   const handleRemoveFromDataSource = (id: string) => {
-    setDataSource(prev => {
-      const newDataSource = prev.filter((item) => item.id !== id);
-      console.log('📦 数据源改变 - 移除项目:', id, '当前数据源:', newDataSource);
-      return newDataSource;
+    // 打开确认对话框
+    setConfirmDialog({
+      open: true,
+      itemId: id
     });
   };
 
+  // 处理确认移除
+  const handleConfirmRemove = async () => {
+    const { itemId } = confirmDialog;
+    try {
+      // 调用移除接口
+      const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}/notes/remove_note?id=${itemId}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const result = await response.json();
+      // 检查接口返回是否成功
+      if (result.code === 200) {
+        // 接口调用成功后更新本地状态
+        setDataSource(prev => {
+          const newDataSource = prev.filter((item) => item.id !== itemId);
+          console.log('📦 数据源改变 - 移除项目:', itemId, '当前数据源:', newDataSource);
+          return newDataSource;
+        });
+      } else {
+        throw new Error(result.message || '接口返回失败');
+      }
+    } catch (err) {
+      console.error('移除项目失败:', err);
+    } finally {
+      // 无论成功与否，关闭确认对话框
+      setConfirmDialog({ open: false, itemId: '' });
+    }
+  };
+
+  // 处理取消移除
+  const handleCancelRemove = () => {
+    setConfirmDialog({ open: false, itemId: '' });
+  };
+
   return (
-    <Box
-      ref={drop}
-      sx={{
-        height: '100%',
-        border: isOver ? '2px solid #1976d2' : '2px dashed #ccc',
-        borderRadius: '8px',
-        padding: '16px',
-        backgroundColor: isOver ? 'rgba(25, 118, 210, 0.1)' : '#f9f9f9',
-        transition: 'all 0.2s ease',
-        position: 'relative',
-      }}
-    >
-      <Typography variant="h6" sx={{ mb: 2 }}>
-        数据源
-      </Typography>
-      
-      {dataSource.length === 0 ? (
-        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', mt: 4 }}>
-          从左侧拖拽节点到此处
+    <>
+      <Box
+        ref={drop}
+        sx={{
+          height: '100%',
+          border: isOver ? '2px solid #1976d2' : '2px dashed #ccc',
+          borderRadius: '8px',
+          padding: '16px',
+          backgroundColor: isOver ? 'rgba(25, 118, 210, 0.1)' : '#f9f9f9',
+          transition: 'all 0.2s ease',
+          position: 'relative',
+        }}
+      >
+        <Typography variant="h6" sx={{ mb: 2 }}>
+          数据源
         </Typography>
-      ) : (
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-          {dataSource.map((item, index) => (
-            <DataSourceItem 
-              key={index} 
-              item={item} 
-              index={index} 
-              onRemove={handleRemoveFromDataSource}
-            />
-          ))}
-        </Box>
-      )}
-      
-      {isOver && (
-        <Box
-          sx={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(25, 118, 210, 0.1)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: '8px',
-            zIndex: 1,
-          }}
-        >
-          <Typography variant="h6" color="primary">
-            释放以将项目添加到数据源
+        
+        {dataSource.length === 0 ? (
+          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', mt: 4 }}>
+            从左侧拖拽节点到此处
           </Typography>
-        </Box>
-      )}
-    </Box>
+        ) : (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+            {dataSource.map((item, index) => (
+              <DataSourceItem 
+                key={index} 
+                item={item} 
+                index={index} 
+                onRemove={handleRemoveFromDataSource}
+              />
+            ))}
+          </Box>
+        )}
+        
+        {isOver && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(25, 118, 210, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: '8px',
+              zIndex: 1,
+            }}
+          >
+            <Typography variant="h6" color="primary">
+              释放以将项目添加到数据源
+            </Typography>
+          </Box>
+        )}
+      </Box>
+
+      {/* 确认移除对话框 */}
+      <Dialog
+        open={confirmDialog.open}
+        onClose={handleCancelRemove}
+        aria-labelledby="confirm-dialog-title"
+      >
+        <DialogTitle id="confirm-dialog-title">确认移除</DialogTitle>
+        <DialogContent>
+          <Typography>您确定要从数据源中移除这个项目吗？</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelRemove}>取消</Button>
+          <Button onClick={handleConfirmRemove} color="error">确认移除</Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 });
 
