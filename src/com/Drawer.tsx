@@ -32,6 +32,8 @@ const menuItems = [
   { title: '查看', icon: <MailIcon />, path: '/view' },
   { title: '总览', icon: <MailIcon />, path: '/overview' },
   { title: '-', icon: null, path: null },
+  { title: '回收站', icon: <MailIcon />, path: '/recover' },
+  { title: '-', icon: null, path: null },
   { title: '模板', icon: <MailIcon />, path: '/template' }
 ];
 

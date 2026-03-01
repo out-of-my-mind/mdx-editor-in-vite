@@ -55,6 +55,7 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
     setError(null);
     try {
       const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}/vitepress/GetVitePressSidebar`);
+      console.log('---------------', response)
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -81,7 +82,7 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
           allNodes.push(...nodeArray);
           collectExpanded(nodeArray);
         });
-        
+        console.log('--------------树节点-', allNodes) 
         setTreeData(allNodes);
         setExpandedItems(expanded);
       } else {
@@ -97,6 +98,7 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
     setLoading(true);
     setError(null);
     try {
+      console.log('移除节点', note)
       const apiUrl = note.noteId? `?id=${note.id}&isfolder=false` : `?id=${note.folderId}&isfolder=true`
       const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}/notes/remove_tree_node${apiUrl}`);
       if (!response.ok) {
@@ -190,13 +192,36 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
       setLoading(false);
     }
   };
+  // 调节节点顺序
+  const fetchSortTreeNode = async (note: TreeNode) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}/notes/sort_tree_node`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(note)
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const result: ApiResponse = await response.json();
+      return result;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '添加目录失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
   // 拖拽移除树节点
-  const handleDragRemoveNode = useCallback((nodeId: string) => {
-    fetchRemoveTreeNode({id: nodeId, text: '', folderId: '', parent_id: '', sort: 0}).then(res => {
+  const handleDragRemoveNode = useCallback((note: TreeNode) => {
+    fetchRemoveTreeNode(note).then(res => {
       if (res?.code === 200) {
         // 接口返回成功后才更新树数据
-        const newTreeData = removeTreeNode(treeData, nodeId);
-        console.log('🌲 树节点改变 - 删除节点:', nodeId, '当前树数据:', newTreeData);
+        const newTreeData = removeTreeNode(treeData, note.id);
+        console.log('🌲 树节点改变 - 删除节点:', note.id, '当前树数据:', newTreeData);
         setTreeData(newTreeData);
         
         setSnackbar({ open: true, message: res?.message, severity: 'success' });
@@ -212,6 +237,23 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
   
   // 处理添加节点到树中
   const handleAddNode = useCallback((item: any, dropnode: TreeNode, position: dropPositionMode = 'child') => {
+    // 判断是树节点之间的拖拽还是数据源拖拽
+    const isTreeDrag = item.source === 'tree';
+    const draggedNode = isTreeDrag ? item.node : null;
+    
+    console.log('🌲 树节点改变 - 开始处理拖拽:', item, '目标节点:', dropnode, '位置:', position, '是否树节点拖拽:', isTreeDrag);
+    
+    if (isTreeDrag && draggedNode) {
+      // 处理树节点之间的拖拽排序
+      handleMoveNode(draggedNode, dropnode, position);
+    } else {
+      // 处理从数据源拖拽到树
+      handleAddFromDataSource(item.item, dropnode, position);
+    }
+  }, [onDropFromDataSource, treeData]);
+
+  // 处理从数据源拖拽到树
+  const handleAddFromDataSource = useCallback((item: any, dropnode: TreeNode, position: dropPositionMode = 'child') => {
     const newNode: TreeNode = {
       id: generateUniqueId(),
       text: item.text || '新节点',
@@ -272,9 +314,68 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
     });
   }, [onDropFromDataSource, treeData]);
 
+  // 处理树节点之间的移动
+  const handleMoveNode = useCallback((draggedNode: TreeNode, dropnode: TreeNode, position: dropPositionMode = 'bottom') => {
+    // 不能将节点移动到自己的子节点中
+    const isDescendant = (parent: TreeNode, childId: string): boolean => {
+      if (parent.id === childId) return true;
+      if (parent.items) {
+        return parent.items.some(item => isDescendant(item, childId));
+      }
+      return false;
+    };
+
+    if (isDescendant(draggedNode, dropnode.id)) {
+      setSnackbar({ open: true, message: '不能将节点移动到自己的子节点中', severity: 'error' });
+      return;
+    }
+
+    // 更新节点信息
+    const updatedNode = { ...draggedNode };
+    
+    // 计算新的父节点和排序值
+    if (position === 'top') {
+      updatedNode.folderId = dropnode.folderId
+      updatedNode.parent_id = dropnode.parent_id;
+      updatedNode.sort = dropnode.sort - 0.001;
+    } else if (position === 'bottom') {
+      updatedNode.folderId = dropnode.folderId
+      updatedNode.parent_id = dropnode.parent_id;
+      updatedNode.sort = dropnode.sort + 0.001;
+    }
+    console.log('🌲 树节点改变 - 移动节点:', draggedNode, '目标节点:', dropnode, '位置:', position, '更新后的节点:', updatedNode);
+    // 调接口
+    fetchSortTreeNode(updatedNode).then(res => {
+      console.log('🌲 树节点改变 - 接口返回:', res);
+      if (res?.code === 200) {
+        // 先从原位置移除节点
+        const treeWithoutDraggedNode = removeTreeNode(treeData, draggedNode.id);
+        // 将节点插入到新位置
+        let newTreeData: TreeNode[];
+        if (position === 'top') {
+          newTreeData = insertBeforeNode(treeWithoutDraggedNode, dropnode.id, updatedNode);
+        } else if (position === 'bottom') {
+          newTreeData = insertAfterNode(treeWithoutDraggedNode, dropnode.id, updatedNode);
+        } else {
+          newTreeData = treeWithoutDraggedNode;
+        }
+        console.log('🌲 树节点改变 - 移动节点完成:', newTreeData);
+        // 更新树数据
+        setTreeData(newTreeData);
+        setSnackbar({ open: true, message: res?.message || '节点移动成功', severity: 'success' });
+      } else {
+        setSnackbar({ open: true, message: res?.message || '接口返回失败', severity: 'error' });
+      }
+    }).catch(err => {
+      console.error('🌲 树节点改变 - 接口调用失败:', err);
+      setSnackbar({ open: true, message: err instanceof Error ? err.message : '接口调用失败', severity: 'error' });
+    });
+  }, [treeData]);
+
   useImperativeHandle(ref, () => ({
     handleDragRemoveNode,
-    handleAddNode
+    handleAddNode,
+    handleMoveNode
   }));
 
   // 使用useEffect钩子在组件挂载时调用接口

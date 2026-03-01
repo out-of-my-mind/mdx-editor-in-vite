@@ -19,6 +19,7 @@ const TreeRootDropZone: React.FC<{
   const [{ isOver, canDrop }, drop] = useDrop(() => ({
     accept: ['data_source_item'],
     drop: (item: any) => {
+      console.log('-----------------拖拽项:', item);
       if (item.source === 'datasource') {
         onDrop(item);
       }
@@ -101,7 +102,7 @@ const SortingReactDnd: React.FC = () => {
     });
     // 可选：从树中移除节点
     if (treeViewRef.current && node.id) {
-      treeViewRef.current.handleDragRemoveNode(node.id);
+      treeViewRef.current.handleDragRemoveNode(node);
     }
   };
 
@@ -110,13 +111,13 @@ const SortingReactDnd: React.FC = () => {
     console.log('📦 数据源改变 - 从数据源拖拽到树根:', item);
     // 从数据源移除项目
     dataSourceRef.current.handleSetDataSource(prev => {
-      const newDataSource = prev.filter((_, i) => i !== item.index);
+      const newDataSource = prev.filter((_, i) => i !== item.node.index);
       // console.log('📦 数据源改变 - 移除项目后当前数据源:', newDataSource);
       return newDataSource;
     });
     // 将项目添加到树根
     if (treeViewRef.current) {
-      treeViewRef.current.handleAddNode(item.item);
+      treeViewRef.current.handleAddNode(item);
     }
   };
 

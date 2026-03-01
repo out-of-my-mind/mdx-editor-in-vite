@@ -57,21 +57,17 @@ const DraggableTreeItem: React.FC<DraggableTreeItemProps> = ({
       source: 'tree',
       nodeId: node.id 
     },
-    canDrag: () => {
-      // 文件夹节点不能拖拽
-      return !isFolder;
-    },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
-  }), [node, isFolder]);
+  }), [node]);
 
   // 拖拽位置状态
   const [dropPosition, setDropPosition] = useState<dropPositionMode>(null);
   const dropTargetRef = React.useRef<HTMLDivElement>(null);
 
   const [{ isOver, canDrop }, drop] = useDrop(() => ({
-    accept: ['data_source_item'],
+    accept: ['data_source_item', 'tree_node'],
     hover: (item: any, monitor) => {
       if (!monitor.canDrop()) return;
       
@@ -94,21 +90,36 @@ const DraggableTreeItem: React.FC<DraggableTreeItemProps> = ({
         return;
       }
       
-      if(!node.link){
-        setDropPosition('child');
-      } else if (hoverClientY < hoverMiddleY - 10) {
-        setDropPosition('top');
-      } else if (hoverClientY > hoverMiddleY + 10) {
-        setDropPosition('bottom');
-      } else  {
-        setDropPosition('bottom')
+      // 如果是树节点之间的拖拽，只允许在节点之间插入，不允许添加为子节点
+      if (item.source === 'tree') {
+        if (hoverClientY < hoverMiddleY - 10) {
+          setDropPosition('top');
+        } else if (hoverClientY > hoverMiddleY + 10) {
+          setDropPosition('bottom');
+        } else {
+          setDropPosition('bottom');
+        }
+      } else if (item.source === 'datasource') {
+        // 如果是数据源拖拽，可以添加为子节点
+        if(!node.link){
+          setDropPosition('child');
+        } else if (hoverClientY < hoverMiddleY - 10) {
+          setDropPosition('top');
+        } else if (hoverClientY > hoverMiddleY + 10) {
+          setDropPosition('bottom');
+        } else  {
+          setDropPosition('bottom')
+        }
       }
     },
     drop: (item: any, monitor) => {
+      const position = dropPosition || null;
+      console.log('🎯 拖拽位置:', position, '目标节点:', node.id, '来源:', item.source);
+      
       if (item.source === 'datasource') {
-        const position = dropPosition || null;
-        console.log('🎯 拖拽位置:', position, '目标节点:', node.id);
-        onDrop(item.item, node, position);
+        onDrop(item, node, position);
+      } else if (item.source === 'tree') {
+        onDrop(item, node, position);
       }
       setDropPosition(null);
     },
@@ -151,9 +162,28 @@ const DraggableTreeItem: React.FC<DraggableTreeItemProps> = ({
 
   // 处理删除节点
   const handleRemoveNode = () => {
+    const removeNode = (nodes: TreeNode[]): TreeNode[] => {
+      return nodes
+        .filter(n => n.id !== node.id)
+        .map(n => {
+          if (n.items) {
+            const newItems = removeNode(n.items);
+            if (newItems !== n.items) {
+              return { ...n, items: newItems };
+            }
+          }
+          return n;
+        });
+    };
+    
     fetchRemoveTreeNode(node).then(res => {
       console.log('🌲 树节点改变 - 接口返回:', res);
       if (res?.code === 200) {
+        setTreeData(prev => {
+          const newTreeData = removeNode(prev);
+          console.log('🌲 树节点改变 - 删除节点:', node.id, '当前树数据:', newTreeData);
+          return newTreeData;
+        });
         setSnackbar({ open: true, message: res?.message, severity: 'success' });
       } else {
         setSnackbar({ open: true, message: res?.message || '接口返回失败', severity: 'error' });
@@ -173,7 +203,8 @@ const DraggableTreeItem: React.FC<DraggableTreeItemProps> = ({
   };
   // 确认节点
   const handleConfirmAddNode = () => {
-    if (!nodeName.title || !nodeName.title.trim() || (node.isTop && (!nodeName.link_txt || !nodeName.link_txt.trim()))) {
+    console.log('确认添加节点', nodeName);
+    if (!nodeName.title || !nodeName.title.trim() || (dialogType !== 'child' && node.isTop && (!nodeName.link_txt || !nodeName.link_txt.trim()))) {
       return;
     }
     const newNode: TreeNode = {
@@ -248,7 +279,8 @@ const DraggableTreeItem: React.FC<DraggableTreeItemProps> = ({
                 console.error('🌲 树节点改变 - 接口调用失败:', err);
                 setSnackbar({ open: true, message: err instanceof Error ? err.message : '接口调用失败', severity: 'error' });
               });
-            } else {
+            } else { 
+              console.log('这次只是移动顺序', nodeName, node);
               fetchAddTreeNode(newNode).then(res => {
                 if (res?.code === 200) {
                   newNodes.splice(i + 1, 0, newNode);

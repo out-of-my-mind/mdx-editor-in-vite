@@ -6,6 +6,7 @@ import DrawerCom from "./com/Drawer";
 import Note from "./page/Note";
 import Sorting from "./page/Sorting";
 import View from "./page/View";
+import Recover from "./page/Recover";
 
 // 创建主题配置
 const theme = createTheme({
@@ -65,6 +66,13 @@ function App() {
               </div>
             } />
             
+            {/* 回收站  */}
+            <Route path="/recover" element={
+              <div>
+                <Recover />
+              </div>
+            } />
+
             {/* 模板页面 */}
             <Route path="/template" element={
               <div style={{ padding: '20px' }}>
