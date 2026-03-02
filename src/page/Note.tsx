@@ -157,7 +157,7 @@ export default function Note({ nodeId }: NoteProps) {
     tablePlugin(),
     imagePlugin(),
     codeBlockPlugin({ defaultCodeBlockLanguage: 'js' }),
-    codeMirrorPlugin({ codeBlockLanguages: { js: 'JavaScript', css: 'CSS' } }),
+    codeMirrorPlugin({ codeBlockLanguages: { js: 'JavaScript', css: 'CSS', cmd: 'Shell', 未知: 'language' } }),
     directivesPlugin({ directiveDescriptors: [AdmonitionDirectiveDescriptor] }),
     diffSourcePlugin({
       diffMarkdown: initialMarkdown,

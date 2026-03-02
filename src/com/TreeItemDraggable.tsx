@@ -214,6 +214,7 @@ const DraggableTreeItem: React.FC<DraggableTreeItemProps> = ({
       link: nodeName.link_txt || undefined,
       folderId: node.folderId,
       parent_id: node.parent_id,
+      isTop: dialogType === 'sibling' && node.isTop,
       sort: 0
     };
     const newFolder: TreeFolder = {
@@ -481,21 +482,26 @@ const DraggableTreeItem: React.FC<DraggableTreeItemProps> = ({
               }
             }}
           />
-          {((dialogType === 'sibling' || dialogType === 'rename') && node.isTop) && (<TextField
-            autoFocus
-            margin="dense"
-            label="链接名"
-            type="text"
-            fullWidth
-            variant="outlined"
-            value={nodeName.link_txt || ''}
-            onChange={(e) => setNodeName({...nodeName, link_txt: e.target.value})}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleConfirmAddNode();
-              }
-            }}
-          />)}
+          {((dialogType === 'sibling' || dialogType === 'rename') && node.isTop) && (
+            <>
+              <p style={{ color: 'red', fontSize: '0.875rem', 'margin-bottom':'0px' }}>*暂不支持特殊字符，“链接名” 在模板文件里作为属性</p>
+              <TextField
+                autoFocus
+                margin="dense"
+                label="链接名"
+                type="text"
+                fullWidth
+                variant="outlined"
+                value={nodeName.link_txt || ''}
+                onChange={(e) => setNodeName({...nodeName, link_txt: e.target.value})}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleConfirmAddNode();
+                  }
+                }}
+              />
+            </>
+            )}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>取消</Button>
