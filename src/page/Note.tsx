@@ -30,9 +30,10 @@ import {
   MDXEditorMethods
 } from "@mdxeditor/editor";
 import { useRef, useState, useMemo, useCallback, useEffect } from "react";
-import { TextField, IconButton, CircularProgress, AlertProps, Box } from '@mui/material';
+import { TextField, IconButton, CircularProgress, AlertProps, Box, Select, MenuItem, Input } from '@mui/material';
 import AlertMessage from '../com/AlertMessage';
 import SaveIcon from '@mui/icons-material/Save';
+import React from "react";
 
 interface NoteProps {
   nodeId?: string;
@@ -94,7 +95,34 @@ export default function Note({ nodeId }: NoteProps) {
     message: '',
     severity: 'success' as AlertProps['severity']
   });
+  const [titleLevel, setTitleLevel] = React.useState('');
 
+  const handleSelectClick = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    console.log(event);
+    const value = event.target.value;
+    setTitleLevel(value);
+    
+    // 根据 titleLevel 设置当前在 MDXEditor 输入内容的标题等级
+    if (editorRef.current) {
+      // 首先获取当前选中的文本
+      const selectedText = editorRef.current.getSelectionMarkdown();
+      // 根据选中的文本和 titleLevel 生成带有标题格式的 markdown
+      let markdownToInsert = '';
+      if (value) {
+        // 设置标题等级
+        const headingPrefix = '#'.repeat(Number(value)) + ' ';
+        markdownToInsert = headingPrefix + selectedText;
+      } else {
+        // 清除标题格式（移除可能的标题前缀）
+        markdownToInsert = selectedText.replace(/^#+\s/, '');
+      }
+      // 插入带有标题格式的文本
+      if (markdownToInsert) {
+        editorRef.current.insertMarkdown(markdownToInsert);
+      }
+      setTitleLevel('')
+    }
+  };
   const saveMarkDown = useCallback(async () => {
     if (!title.trim()) {
       setSnackbar({
@@ -171,6 +199,21 @@ export default function Note({ nodeId }: NoteProps) {
           <BoldItalicUnderlineToggles />
           <CodeToggle />
           <CreateLink />
+          <Select
+            value={titleLevel}
+            onClick={handleSelectClick}
+            variant="standard"
+            displayEmpty
+            input={<Input disableUnderline />}
+          >
+            <MenuItem value=""><em>常规</em></MenuItem>
+            <MenuItem value={1}>标题1</MenuItem>
+            <MenuItem value={2}>标题2</MenuItem>
+            <MenuItem value={3}>标题3</MenuItem>
+            <MenuItem value={4}>标题4</MenuItem>
+            <MenuItem value={5}>标题5</MenuItem>
+            <MenuItem value={6}>标题6</MenuItem>
+          </Select>
           <InsertAdmonition />
           <InsertImage />
           <InsertTable />
@@ -200,7 +243,7 @@ export default function Note({ nodeId }: NoteProps) {
         </DiffSourceToggleWrapper>
       )
     })
-  ], [saveMarkDown, isSaving, initialMarkdown]);
+  ], [saveMarkDown, isSaving, initialMarkdown, handleSelectClick]);
 
   return (
    <>
