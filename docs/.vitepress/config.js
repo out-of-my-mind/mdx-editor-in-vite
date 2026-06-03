@@ -91,13 +91,22 @@ export default async () => {
         'script',
         {  },
         `;(() => {
-          window.onload = function() {
-            let el = document.querySelector('.VPContent.has-sidebar')
-            console.log('VPContent.has-sidebar', el)
-            if(el) {
-            el.style['padding-right'] = 0
+          function setPadding() {
+            console.log('script executed')
+            let el = document.querySelector('.VPContent.has-sidebar');
+            if (el) {
+              el.style['padding-right'] = 0;
+              return true;
             }
-          };
+            return false;
+          }
+          // 立即尝试，如果失败则观察
+          if (!setPadding()) {
+            const observer = new MutationObserver(() => {
+              if (setPadding()) observer.disconnect();
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+          }
         })()`
       ]
     ],
