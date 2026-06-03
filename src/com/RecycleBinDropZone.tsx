@@ -1,6 +1,7 @@
 import React, { useEffect, useImperativeHandle, useState, forwardRef } from 'react';
 import { Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
 import '../styles/TreeView.css';
+import axiosInstance from '../api/axiosInstance';
 
 // 定义右侧的数据结构
 interface SourceItem {
@@ -76,11 +77,7 @@ const RecycleBinDropZone = forwardRef<any, RecycleBinComponentProps>(({
   // 从接口获取数据的函数
   const fetchDataSource = async () => {
     try {
-      const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}${apiEndpoint}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const result: ApiResponse = await response.json();
+      const result: ApiResponse = await axiosInstance.get(apiEndpoint);
       const rightSource: SourceItem[] = [];
       // 检查接口返回是否成功
       if (result.code === 200) {
@@ -127,11 +124,7 @@ const RecycleBinDropZone = forwardRef<any, RecycleBinComponentProps>(({
     const { itemId } = confirmDialog;
     try {
       // 调用恢复接口
-      const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}${recoverEndpoint}?id=${itemId}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const result = await response.json();
+      const result = await axiosInstance.get(`${recoverEndpoint}?id=${itemId}`);
       // 检查接口返回是否成功
       if (result.code === 200) {
         // 接口调用成功后更新本地状态

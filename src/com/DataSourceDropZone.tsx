@@ -2,6 +2,7 @@ import React, { useEffect, useImperativeHandle, useState, forwardRef } from 'rea
 import { Box, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Button } from '@mui/material';
 import { useDrag, useDrop } from 'react-dnd';
 import '../styles/TreeView.css';
+import axiosInstance from '../api/axiosInstance';
 
 // 定义右侧的数据结构
 interface SourceItem {
@@ -84,14 +85,8 @@ const DataSourceDropZone = forwardRef<any, DataSourceComponentProps>(({ onDrop }
 
   // 从接口获取树数据的函数
   const fetchDataSource = async () => {
-    // setLoading(true);
-    // setError(null);
     try {
-      const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}/notes/getRightDataSource`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const result: ApiResponse = await response.json();
+      const result: ApiResponse = await axiosInstance.get('/notes/getRightDataSource');
       const rightSource: SourceItem[] = [];
       // 检查接口返回是否成功
       if (result.code === 200) {
@@ -103,9 +98,7 @@ const DataSourceDropZone = forwardRef<any, DataSourceComponentProps>(({ onDrop }
         throw new Error(result.message || '接口返回失败');
       }
     } catch (err) {
-      // setError(err instanceof Error ? err.message : '获取数据失败');
-    } finally {
-      // setLoading(false);
+      console.error('获取数据失败:', err);
     }
   };
   // 使用useEffect钩子在组件挂载时调用接口
@@ -137,11 +130,7 @@ const DataSourceDropZone = forwardRef<any, DataSourceComponentProps>(({ onDrop }
     const { itemId } = confirmDialog;
     try {
       // 调用移除接口
-      const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}/notes/remove_note?id=${itemId}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const result = await response.json();
+      const result = await axiosInstance.get(`/notes/remove_note?id=${itemId}`);
       // 检查接口返回是否成功
       if (result.code === 200) {
         // 接口调用成功后更新本地状态

@@ -86,6 +86,21 @@ export default async () => {
         provider: 'local'
       }
     },
+    head: [
+      [
+        'script',
+        {  },
+        `;(() => {
+          window.onload = function() {
+            let el = document.querySelector('.VPContent.has-sidebar')
+            console.log('VPContent.has-sidebar', el)
+            if(el) {
+            el.style['padding-right'] = 0
+            }
+          };
+        })()`
+      ]
+    ],
     vite: {
       resolve: {
         alias: {

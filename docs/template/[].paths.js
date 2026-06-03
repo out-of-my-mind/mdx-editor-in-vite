@@ -6,7 +6,7 @@ export default {
     const pkgs = await (
       await fetch(`http://${url}/vitepress/GetVitePressRoute?type='#link_txt#'`)
     ).json()
-    console.log('GetVitePressRoute', pkgs.data)
+    // console.log('GetVitePressRoute', pkgs.data)
     return pkgs.data.map((pkg) => {
       return {
         params: {

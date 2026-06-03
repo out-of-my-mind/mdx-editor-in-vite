@@ -14,16 +14,8 @@ interface TreeItemNoDragProps {
 // 无拖拽功能的树节点组件
 const TreeItemNoDrag: React.FC<TreeItemNoDragProps> = ({
   node,
-  onNodeClick
 }) => {
   const isFolder = !node.noteId;
-  // 处理节点点击
-  const handleNodeClick = () => {
-    console.log('点击节点:', node);
-    if (onNodeClick) {
-      onNodeClick(node);
-    }
-  };
 
   return (
     <>
@@ -42,7 +34,6 @@ const TreeItemNoDrag: React.FC<TreeItemNoDragProps> = ({
                 backgroundColor: 'rgba(0, 0, 0, 0.04)'
               }
             }}
-            onClick={handleNodeClick}
           >
             {isFolder ? (
               <FolderIcon fontSize="small" />
@@ -59,7 +50,6 @@ const TreeItemNoDrag: React.FC<TreeItemNoDragProps> = ({
           <TreeItemNoDrag
             key={childNode.id}
             node={childNode}
-            onNodeClick={onNodeClick}
           />
         ))}
       </TreeItem>

@@ -26,11 +26,11 @@ async function updateHomePage() {
     const result = await response.json()
     // 2. 根据你的API实际返回结构调整
     const actions = result.data || result
-    console.log('获取到的actions数据:', actions)
+    // console.log('获取到的actions数据:', actions)
 
     // 3. 读取原始的index.md文件
     const homePagePath = path.join(basePath, '/index.md')
-    console.log('读取文件:', homePagePath)
+    // console.log('读取文件:', homePagePath)
     if (!fs.existsSync(homePagePath)) {
       throw new Error(`文件不存在: ${homePagePath}`)
     }

@@ -371,11 +371,15 @@ const DraggableTreeItem: React.FC<DraggableTreeItemProps> = ({
             onContextMenu={handleContextMenu}
             sx={{
               cursor: 'move',
+              fontSize: '0.875rem',
               opacity: isDragging ? 0.5 : 1,
               backgroundColor: isOver ? 'rgba(25, 118, 210, 0.1)' : 'transparent',
               border: isOver ? '2px solid #1976d2' : 'none',
               borderRadius: '4px',
               padding: '4px',
+              display: 'inline-flex',
+              flexDirection: 'row',
+              alignItems: 'center',
               '&:hover': {
                 backgroundColor: 'rgba(0, 0, 0, 0.04)',
               },

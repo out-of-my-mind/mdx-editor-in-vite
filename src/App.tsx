@@ -6,6 +6,7 @@ import DrawerCom from "./com/Drawer";
 import Note from "./page/Note";
 import Sorting from "./page/Sorting";
 import View from "./page/View";
+import Overview from "./page/Overview";
 import Recover from "./page/Recover";
 
 // 创建主题配置
@@ -60,9 +61,8 @@ function App() {
             
             {/* 总览页面 */}
             <Route path="/overview" element={
-              <div style={{ padding: '20px' }}>
-                <h2>总览页面</h2>
-                <p>这里是总览功能的内容区域。</p>
+              <div>
+               <Overview />
               </div>
             } />
             

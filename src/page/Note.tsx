@@ -30,18 +30,25 @@ import {
   MDXEditorMethods
 } from "@mdxeditor/editor";
 import { useRef, useState, useMemo, useCallback, useEffect } from "react";
-import { TextField, IconButton, CircularProgress, AlertProps, Box, Select, MenuItem, Input } from '@mui/material';
+import { TextField, IconButton, CircularProgress, AlertProps, Box, Select, MenuItem, Input, Chip, Tooltip } from '@mui/material';
 import AlertMessage from '../com/AlertMessage';
 import SaveIcon from '@mui/icons-material/Save';
+import AddIcon from '@mui/icons-material/Add';
 import React from "react";
+import axiosInstance from '../api/axiosInstance';
 
 interface NoteProps {
   nodeId?: string;
 }
 
+// 最大标签数量限制
+const MAX_TAGS = 5;
+
 export default function Note({ nodeId }: NoteProps) {
   const [initialMarkdown, setInitialMarkdown] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [tags, setTags] = useState<string[]>([]);
+  const [newTag, setNewTag] = useState('');
 
   // 当 nodeId 变化时，查询接口获取数据
   useEffect(() => {
@@ -49,25 +56,17 @@ export default function Note({ nodeId }: NoteProps) {
       const fetchNoteData = async () => {
         setIsLoading(true);
         try {
-          // 检查API地址是否配置
-          if (!import.meta.env.VITE_NOTE_ENV_API) {
-            throw new Error('API地址未配置');
-          }
-          const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}/notes/getInfo?id=${nodeId}`);
-          
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || `HTTP错误! 状态码: ${response.status}`);
-          }
-          
-          const result = await response.json();
-          console.log('获取节点数据成功:', result);
+          const result = await axiosInstance.get(`/notes/getInfo?id=${nodeId}`);
           
           if (result?.code === 200 && result?.data?.content) {
             setInitialMarkdown(result.data.content);
             // 如果有标题，也设置标题
             if (result.data.title) {
               setTitle(result.data.title);
+            }
+            // 如果有标签，设置标签（最多显示5个）
+            if (result.data.tags) {
+              setTags(result.data.tags.split(',').slice(0, MAX_TAGS));
             }
           }
         } catch (error) {
@@ -84,6 +83,8 @@ export default function Note({ nodeId }: NoteProps) {
       };
       
       fetchNoteData();
+    } else {
+      setIsLoading(false);
     }
   }, [nodeId]);
 
@@ -96,6 +97,40 @@ export default function Note({ nodeId }: NoteProps) {
     severity: 'success' as AlertProps['severity']
   });
   const [titleLevel, setTitleLevel] = React.useState('');
+
+  // 添加标签（限制最多5个）
+  const handleAddTag = () => {
+    const trimmedTag = newTag.trim();
+    if (trimmedTag && !tags.includes(trimmedTag) && tags.length < MAX_TAGS && trimmedTag.indexOf(',') === -1) {
+      setTags([...tags, trimmedTag]);
+      setNewTag('');
+    } else if (tags.length >= MAX_TAGS) {
+      setSnackbar({
+        open: true,
+        message: `最多只能添加${MAX_TAGS}个标签，且标签不能包含逗号`,
+        severity: 'warning'
+      });
+    } else if (trimmedTag.indexOf(',') !== -1) {
+      setSnackbar({
+        open: true,
+        message: `标签不能包含逗号`,
+        severity: 'warning'
+      });
+    }
+  };
+
+  // 删除标签
+  const handleDeleteTag = (tagToDelete: string) => {
+    setTags(tags.filter(tag => tag !== tagToDelete));
+  };
+
+  // 键盘事件处理标签添加
+  const handleTagKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddTag();
+    }
+  };
 
   const handleSelectClick = (event: React.ChangeEvent<HTMLSelectElement>) => {
     console.log(event);
@@ -137,26 +172,10 @@ export default function Note({ nodeId }: NoteProps) {
       setIsSaving(true);
       try {
         const content = editorRef.current.getMarkdown();
-        console.log("保存数据:", { title, content });
-        // 检查API地址是否配置
-        if (!import.meta.env.VITE_NOTE_ENV_API) {
-          throw new Error('API地址未配置');
-        }
-        const apiUrl = nodeId ? `http://${import.meta.env.VITE_NOTE_ENV_API}/notes/edit` : `http://${import.meta.env.VITE_NOTE_ENV_API}/notes/add`;
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ title, content, id: nodeId })
-        });
+        console.log("保存数据:", { title, content, tags });
+        const apiUrl = nodeId ? '/notes/edit' : '/notes/add';
+        const result = await axiosInstance.post(apiUrl, { title, content, id: nodeId, tags });
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || `HTTP错误! 状态码: ${response.status}`);
-        }
-
-        const result = await response.json();
         console.log("保存成功:", result);
         setSnackbar({
           open: true,
@@ -175,7 +194,7 @@ export default function Note({ nodeId }: NoteProps) {
         setIsSaving(false);
       }
     }
-  }, [title]);
+  }, [title, tags]);
 
   const plugins = useMemo(() => [
     headingsPlugin(),
@@ -253,18 +272,74 @@ export default function Note({ nodeId }: NoteProps) {
         </Box>
       ) : (
         <>
-          <TextField
-            fullWidth
-            required
-            error={!title.trim()}
-            helperText={!title.trim() ? "此字段为必填项" : ""}
-            label="标题"
-            variant="outlined"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            margin="normal"
-            style={{ marginBottom: '20px' }}
-          />
+          {/* 标题和标签区域 - 同一行显示 */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+            <TextField
+              fullWidth
+              required
+              error={!title.trim()}
+              helperText={!title.trim() ? "此字段为必填项" : ""}
+              label="标题"
+              variant="outlined"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              margin="normal"
+            />
+            
+            {/* 标签区域 - 一行显示 */}
+            <Box sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px',
+              minWidth: '300px',
+              maxWidth: '400px'
+            }}>
+              {/* 已添加的标签 */}
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: '4px', flex: 1 }}>
+                {tags.map((tag) => (
+                  <Chip
+                    key={tag}
+                    label={tag}
+                    onDelete={() => handleDeleteTag(tag)}
+                    color="primary"
+                    variant="outlined"
+                    size="small"
+                  />
+                ))}
+              </Box>
+              
+              {/* 添加新标签 */}
+              {tags.length < MAX_TAGS && (
+                <Box sx={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                  <TextField
+                    size="small"
+                    placeholder="标签"
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    onKeyPress={handleTagKeyPress}
+                    sx={{ width: '80px' }}
+                  />
+                  <Tooltip title="添加标签">
+                    <span>
+                      <IconButton 
+                        size="small" 
+                        onClick={handleAddTag}
+                        disabled={!newTag.trim()}
+                      >
+                        <AddIcon />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                </Box>
+              )}
+              
+              {/* 标签数量提示 */}
+              <span style={{ fontSize: '12px', color: '#666' }}>
+                {tags.length}/{MAX_TAGS}
+              </span>
+            </Box>
+          </Box>
+          
           <MDXEditor
             ref={editorRef}
             markdown={initialMarkdown}
@@ -274,8 +349,10 @@ export default function Note({ nodeId }: NoteProps) {
       )}
       {snackbar.open && (
         <AlertMessage
+          open={snackbar.open}
           message={snackbar.message}
           severity={snackbar.severity}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
         />
       )}
     </>

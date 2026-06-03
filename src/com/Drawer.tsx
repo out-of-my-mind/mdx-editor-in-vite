@@ -28,7 +28,7 @@ interface DrawerProps {
 // 菜单配置
 const menuItems = [
   { title: '记录', icon: <InboxIcon />, path: '/note' },
-  { title: '梳理', icon: <InboxIcon />, path: '/sorting' },
+  { title: '归纳', icon: <InboxIcon />, path: '/sorting' },
   { title: '查看', icon: <MailIcon />, path: '/view' },
   { title: '总览', icon: <MailIcon />, path: '/overview' },
   { title: '-', icon: null, path: null },

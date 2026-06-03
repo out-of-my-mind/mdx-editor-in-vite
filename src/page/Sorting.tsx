@@ -154,7 +154,7 @@ const SortingReactDnd: React.FC = () => {
         onContextMenu={handleContextMenu}
       >
         {/* 左侧树区域 */}
-        <Paper elevation={2} sx={{ width: '300px', padding: '16px', overflow: 'auto', display: 'flex', 'flex-direction': 'column' }}>
+        <Paper elevation={2} sx={{ width: '300px', padding: '16px', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
           <Typography variant="h6" sx={{ mb: 2 }}>
             文档树
           </Typography>

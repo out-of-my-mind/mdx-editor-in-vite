@@ -8,6 +8,7 @@ import DraggableTreeItem, { dropPositionMode } from './TreeItemDraggable';
 import AlertMessage from './AlertMessage';
 import { generateUniqueId, removeTreeNode, addChildNode, calculateSortValue, insertBeforeNode, insertAfterNode } from '../utils/treeUtils';
 import '../styles/TreeView.css';
+import axiosInstance from '../api/axiosInstance';
 
 interface TreeViewComponentProps {
   onDropFromDataSource?: (item: any) => void;
@@ -54,12 +55,7 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}/vitepress/GetVitePressSidebar`);
-      console.log('---------------', response)
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const result: ApiResponse = await response.json();
+      const result: ApiResponse = await axiosInstance.get('/vitepress/GetVitePressSidebar');
       // 检查接口返回是否成功
       if (result.code === 200) {
         // 将 data 对象中的所有树节点数组合并为一个数组
@@ -99,12 +95,8 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
     setError(null);
     try {
       console.log('移除节点', note)
-      const apiUrl = note.noteId? `?id=${note.id}&isfolder=false` : `?id=${note.folderId}&isfolder=true`
-      const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}/notes/remove_tree_node${apiUrl}`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const result: ApiResponse = await response.json();
+      const apiUrl = note.noteId? `/notes/remove_tree_node?id=${note.id}&isfolder=false` : `/notes/remove_tree_node?id=${note.folderId}&isfolder=true`
+      const result: ApiResponse = await axiosInstance.get(apiUrl);
       return result;
     } catch (err) {
       setError(err instanceof Error ? err.message : '移除节点失败');
@@ -116,18 +108,10 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}/notes/add_tree_node`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(note)
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const result: ApiResponse = await response.json();
+      const result: ApiResponse = await axiosInstance.post('/notes/add_tree_node', note);
       return result;
     } catch (err) {
-      setError(err instanceof Error ? err.message : '移除节点失败');
+      setError(err instanceof Error ? err.message : '添加节点失败');
     } finally {
       setLoading(false);
     }
@@ -137,15 +121,7 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}/notes/add_tree_folder`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(note)
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const result: ApiResponse = await response.json();
+      const result: ApiResponse = await axiosInstance.post('/notes/add_tree_folder', note);
       return result;
     } catch (err) {
       setError(err instanceof Error ? err.message : '添加目录失败');
@@ -157,17 +133,10 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}/notes/rename_tree_node?nodeId=${nodeId}&name=${name}`, {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const result: ApiResponse = await response.json();
+      const result: ApiResponse = await axiosInstance.get(`/notes/rename_tree_node?nodeId=${nodeId}&name=${name}`);
       return result;
     } catch (err) {
-      setError(err instanceof Error ? err.message : '添加目录失败');
+      setError(err instanceof Error ? err.message : '重命名节点失败');
     } finally {
       setLoading(false);
     }
@@ -176,18 +145,10 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}/notes/rename_tree_folder`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(note)
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const result: ApiResponse = await response.json();
+      const result: ApiResponse = await axiosInstance.post('/notes/rename_tree_folder', note);
       return result;
     } catch (err) {
-      setError(err instanceof Error ? err.message : '添加目录失败');
+      setError(err instanceof Error ? err.message : '重命名目录失败');
     } finally {
       setLoading(false);
     }
@@ -197,18 +158,10 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`http://${import.meta.env.VITE_NOTE_ENV_API}/notes/sort_tree_node`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(note)
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const result: ApiResponse = await response.json();
+      const result: ApiResponse = await axiosInstance.post('/notes/sort_tree_node', note);
       return result;
     } catch (err) {
-      setError(err instanceof Error ? err.message : '添加目录失败');
+      setError(err instanceof Error ? err.message : '调节顺序失败');
     } finally {
       setLoading(false);
     }
@@ -422,6 +375,7 @@ const TreeViewComponentReactDnd = forwardRef<any, TreeViewComponentProps>(({ onD
         <AlertMessage
           message={snackbar.message}
           severity={snackbar.severity}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
         />
       )}
     </>
