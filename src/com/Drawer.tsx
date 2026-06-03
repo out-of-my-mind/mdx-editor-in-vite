@@ -18,7 +18,9 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import InboxIcon from '@mui/icons-material/MoveToInbox';
 import MailIcon from '@mui/icons-material/Mail';
+import LogoutIcon from '@mui/icons-material/Logout';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { removeToken } from '../utils/auth';
 
 interface DrawerProps {
   children: React.ReactNode;
@@ -131,6 +133,11 @@ export default function DrawerCom({ children, onMenuSelect }: DrawerProps) {
     }
   };
 
+  const handleLogout = () => {
+    removeToken();
+    navigate('/login');
+  };
+
   // 监听路径变化，更新选中的菜单项
   React.useEffect(() => {
     setMenuSelect(getCurrentMenuTitle());
@@ -182,7 +189,7 @@ export default function DrawerCom({ children, onMenuSelect }: DrawerProps) {
         <List>
           {menuItems.map((item, index) => {
             if (item.title === '-') {
-              return <Divider key={index} />
+              return <Divider key={index} />;
             } else {
               return (
                 <ListItem key={item.title} disablePadding>
@@ -199,6 +206,18 @@ export default function DrawerCom({ children, onMenuSelect }: DrawerProps) {
               )
             }
           })}
+        </List>
+        <Box sx={{ flexGrow: 1 }} />
+        <Divider />
+        <List>
+          <ListItem disablePadding>
+            <ListItemButton onClick={handleLogout}>
+              <ListItemIcon>
+                <LogoutIcon />
+              </ListItemIcon>
+              <ListItemText primary="退出登录" />
+            </ListItemButton>
+          </ListItem>
         </List>
       </MuiDrawer>
       <Main open={open}>

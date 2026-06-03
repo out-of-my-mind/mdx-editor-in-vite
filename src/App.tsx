@@ -8,6 +8,9 @@ import Sorting from "./page/Sorting";
 import View from "./page/View";
 import Overview from "./page/Overview";
 import Recover from "./page/Recover";
+import Login from "./page/Login";
+import ProtectedRoute from "./com/ProtectedRoute";
+import { isAuthenticated } from "./utils/auth";
 
 // 创建主题配置
 const theme = createTheme({
@@ -33,63 +36,73 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <Router>
-        <DrawerCom onMenuSelect={handleMenuSelect}>
-          <Routes>
-            {/* 默认路由重定向到记录页面 */}
-            <Route path="/" element={<Navigate to="/note" replace />} />
-            
-            {/* 记录页面 */}
-            <Route path="/note" element={
-              <div>
-                <Note />
-              </div>
-            } />
-            
-            {/* 梳理页面 */}
-            <Route path="/sorting" element={
-              <div>
-                <Sorting />
-              </div>
-            } />
-            
-            {/* 查看页面 */}
-            <Route path="/view" element={
-              <div>
-                <View />
-              </div>
-            } />
-            
-            {/* 总览页面 */}
-            <Route path="/overview" element={
-              <div>
-               <Overview />
-              </div>
-            } />
-            
-            {/* 回收站  */}
-            <Route path="/recover" element={
-              <div>
-                <Recover />
-              </div>
-            } />
+        <Routes>
+          {/* 登录页面不需要 Drawer */}
+          <Route path="/login" element={<Login />} />
+          
+          {/* 其他需要登录的页面 */}
+          <Route path="*" element={
+            <ProtectedRoute>
+              <DrawerCom onMenuSelect={handleMenuSelect}>
+                <Routes>
+                  {/* 默认路由重定向到记录页面 */}
+                  <Route path="/" element={<Navigate to="/note" replace />} />
+                  
+                  {/* 记录页面 */}
+                  <Route path="/note" element={
+                    <div>
+                      <Note />
+                    </div>
+                  } />
+                  
+                  {/* 梳理页面 */}
+                  <Route path="/sorting" element={
+                    <div>
+                      <Sorting />
+                    </div>
+                  } />
+                  
+                  {/* 查看页面 */}
+                  <Route path="/view" element={
+                    <div>
+                      <View />
+                    </div>
+                  } />
+                  
+                  {/* 总览页面 */}
+                  <Route path="/overview" element={
+                    <div>
+                     <Overview />
+                    </div>
+                  } />
+                  
+                  {/* 回收站  */}
+                  <Route path="/recover" element={
+                    <div>
+                      <Recover />
+                    </div>
+                  } />
 
-            {/* 模板页面 */}
-            <Route path="/template" element={
-              <div style={{ padding: '20px' }}>
-                <h2>模板页面</h2>
-                <p>这里是模板功能的内容区域。</p>
-              </div>
-            } />
-            
-            {/* 404 页面 */}
-            <Route path="*" element={
-              <div style={{ padding: '20px', textAlign: 'center' }}>
-                <h2>页面未找到</h2>
-                <p>您访问的页面不存在。</p>
-              </div>
-            } />
-          </Routes>
-        </DrawerCom>
+                  {/* 模板页面 */}
+                  <Route path="/template" element={
+                    <div style={{ padding: '20px' }}>
+                      <h2>模板页面</h2>
+                      <p>这里是模板功能的内容区域。</p>
+                    </div>
+                  } />
+                  
+                  {/* 404 页面 */}
+                  <Route path="*" element={
+                    <div style={{ padding: '20px', textAlign: 'center' }}>
+                      <h2>页面未找到</h2>
+                      <p>您访问的页面不存在。</p>
+                    </div>
+                  } />
+                </Routes>
+              </DrawerCom>
+            </ProtectedRoute>
+          } />
+        </Routes>
       </Router>
     </ThemeProvider>
   );
